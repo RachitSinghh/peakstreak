@@ -51,12 +51,22 @@ export async function signupAction(
   await ensureUserDefaults(user.id)
   track("signup", { userId: user.id, properties: { method: "credentials" } })
 
-  await signIn("credentials", {
-    email,
-    password,
-    redirectTo: safeCallbackUrl(formData.get("callbackUrl")),
-  })
-  return {}
+  try {
+    await signIn("credentials", {
+      email,
+      password,
+      redirectTo: safeCallbackUrl(formData.get("callbackUrl")),
+    })
+    return {}
+  } catch (error) {
+    // The account row was already created above; only the auto-login failed
+    // (e.g. a transient DB error inside the authorize callback). Point the
+    // user at login rather than crashing the page — their credentials work.
+    if (error instanceof AuthError) {
+      return { error: "Your account was created, but automatic sign-in failed. Please log in." }
+    }
+    throw error // NEXT_REDIRECT on success — let Next handle it
+  }
 }
 
 export async function loginAction(

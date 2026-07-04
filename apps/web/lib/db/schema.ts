@@ -201,6 +201,9 @@ export const dailyActivity = pgTable(
 
 // ── Notes ───────────────────────────────────────────────────────
 
+// Legacy single-document-per-video notes (PS-9 v1). Superseded by
+// note_entries below; kept only so the migration can backfill old content.
+// Nothing writes to this table anymore.
 export const notes = pgTable(
   "notes",
   {
@@ -218,6 +221,29 @@ export const notes = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("notes_user_video_idx").on(t.userId, t.videoId)],
+)
+
+// Timestamped note entries: many per (user, video). Each note optionally
+// pins the video moment it was written at, so notes render as a seekable
+// log beneath the player. timestampSeconds is null for untimed notes.
+export const noteEntries = pgTable(
+  "note_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    videoId: uuid("video_id")
+      .notNull()
+      .references(() => videos.id, { onDelete: "cascade" }),
+    userPlaylistId: uuid("user_playlist_id")
+      .notNull()
+      .references(() => userPlaylists.id, { onDelete: "cascade" }),
+    timestampSeconds: integer("timestamp_seconds"),
+    body: text("body").notNull(),
+    ...timestamps,
+  },
+  (t) => [index("note_entries_user_video_idx").on(t.userId, t.videoId)],
 )
 
 // ── Email preferences & log ─────────────────────────────────────

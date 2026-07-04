@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { MotionConfig } from "motion/react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
 
 function ThemeProvider({
@@ -16,7 +17,8 @@ function ThemeProvider({
       {...props}
     >
       <ThemeHotkey />
-      {children}
+      {/* DESIGN.md §7: all motion must respect prefers-reduced-motion. */}
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
     </NextThemesProvider>
   )
 }
@@ -47,7 +49,8 @@ function ThemeHotkey() {
         return
       }
 
-      if (event.key.toLowerCase() !== "d") {
+      // Autofill/IME can dispatch keydown events with no `key`.
+      if (typeof event.key !== "string" || event.key.toLowerCase() !== "d") {
         return
       }
 

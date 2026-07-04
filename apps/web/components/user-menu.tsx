@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/av
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -35,17 +36,21 @@ export function UserMenu({
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="font-normal">
-          <div className="truncate text-sm font-medium">{name ?? "Learner"}</div>
-          <div className="text-muted-foreground truncate text-xs">{email}</div>
-        </DropdownMenuLabel>
+        {/* Base UI's GroupLabel throws unless it's inside a Group. */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="truncate text-sm font-medium">{name ?? "Learner"}</div>
+            <div className="text-muted-foreground truncate text-xs">{email}</div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/settings" />}>
           <Settings className="size-4" />
           Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => void signOutAction()}>
+        {/* Base UI menu items take onClick — onSelect is a Radix prop it ignores. */}
+        <DropdownMenuItem onClick={() => void signOutAction()}>
           <LogOut className="size-4" />
           Sign out
         </DropdownMenuItem>

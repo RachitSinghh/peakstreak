@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { AnimatePresence, motion } from "motion/react"
 import { ArrowLeft, Check, CheckCircle2, Circle, ListVideo } from "lucide-react"
 import { toast } from "sonner"
 
@@ -64,6 +65,17 @@ export interface WatchVideo {
 
 const HEARTBEAT_INTERVAL_S = 20
 
+// Start a few seconds before where they left off, for context on resume.
+const RESUME_REWIND_S = 3
+
+function clockLabel(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const mm = h > 0 ? String(m).padStart(2, "0") : String(m)
+  return `${h > 0 ? `${h}:` : ""}${mm}:${String(s % 60).padStart(2, "0")}`
+}
+
 export function WatchView({
   enrollmentId,
   playlistTitle,
@@ -102,6 +114,16 @@ export function WatchView({
   useEffect(() => {
     completedRef.current = isCompleted
   }, [isCompleted])
+
+  // Where the player should begin. Resume from the furthest watched point
+  // (minus a short rewind), unless the video is already done or they were
+  // effectively at the end — then start fresh.
+  const startAtSeconds = useMemo(() => {
+    if (current.isCompleted) return 0
+    if (resumePositionSeconds < 5) return 0
+    if (resumePositionSeconds >= current.durationSeconds - 15) return 0
+    return Math.max(0, Math.floor(resumePositionSeconds - RESUME_REWIND_S))
+  }, [current.isCompleted, current.durationSeconds, resumePositionSeconds])
 
   const nextVideo = useMemo(() => {
     const after = videos.filter((v) => v.position > current.position && !completedIds.has(v.id))
@@ -177,7 +199,8 @@ export function WatchView({
       if (cancelled || !containerRef.current || !window.YT) return
       playerRef.current = new window.YT.Player(containerRef.current, {
         videoId: current.youtubeVideoId,
-        playerVars: { rel: 0, start: 0 },
+        // `start` makes YouTube seek to the resume point as it loads.
+        playerVars: { rel: 0, start: startAtSeconds },
         events: {
           onStateChange: (event: { data: number }) => {
             if (event.data === window.YT!.PlayerState.PAUSED || event.data === window.YT!.PlayerState.ENDED) {
@@ -186,6 +209,12 @@ export function WatchView({
           },
         },
       })
+
+      if (startAtSeconds > 0) {
+        toast(`Resumed where you left off · ${clockLabel(startAtSeconds)}`, {
+          description: "Skip back to the start any time.",
+        })
+      }
 
       tickTimer = setInterval(() => {
         const player = playerRef.current
@@ -266,7 +295,7 @@ export function WatchView({
   )
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="flex min-w-0 flex-col gap-4">
         <div className="flex items-center gap-2">
           <Link
@@ -283,32 +312,56 @@ export function WatchView({
 
         <div className="border-border relative aspect-video w-full overflow-hidden rounded-xl border bg-black">
           <div ref={containerRef} className="size-full" />
-          {showCelebration && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/85 text-center">
-              <CheckCircle2 className="text-success size-16 animate-in zoom-in duration-300" />
-              <p className="text-lg font-semibold text-white">
-                {playlistDone ? "Playlist complete! 🎉" : "Video complete"}
-              </p>
-              <div className="flex gap-3">
-                {playlistDone ? (
-                  <Button onClick={() => router.push(`/completed/${enrollmentId}`)}>
-                    See your stats
+          <AnimatePresence>
+            {showCelebration && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/85 text-center"
+              >
+                <motion.div
+                  initial={{ scale: 0, rotate: -30 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.05 }}
+                >
+                  <CheckCircle2 className="text-success size-16" />
+                </motion.div>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18 }}
+                  className="text-lg font-semibold text-white"
+                >
+                  {playlistDone ? "Playlist complete! 🎉" : "Video complete"}
+                </motion.p>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.28 }}
+                  className="flex gap-3"
+                >
+                  {playlistDone ? (
+                    <Button onClick={() => router.push(`/completed/${enrollmentId}`)}>
+                      See your stats
+                    </Button>
+                  ) : nextVideo ? (
+                    <Button
+                      onClick={() =>
+                        router.push(`/playlists/${enrollmentId}/watch/${nextVideo.id}`)
+                      }
+                    >
+                      Next video
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" onClick={() => setShowCelebration(false)}>
+                    Keep watching
                   </Button>
-                ) : nextVideo ? (
-                  <Button
-                    onClick={() =>
-                      router.push(`/playlists/${enrollmentId}/watch/${nextVideo.id}`)
-                    }
-                  >
-                    Next video
-                  </Button>
-                ) : null}
-                <Button variant="outline" onClick={() => setShowCelebration(false)}>
-                  Keep watching
-                </Button>
-              </div>
-            </div>
-          )}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -334,28 +387,41 @@ export function WatchView({
           </Button>
         </div>
 
-        <NotesPanel
-          key={`m-${currentVideoId}`}
-          videoId={currentVideoId}
-          enrollmentId={enrollmentId}
-          className="lg:hidden"
-        />
-      </div>
+        {/* Watch progress toward the 80% auto-complete threshold. */}
+        <div
+          className="bg-secondary h-1 w-full overflow-hidden rounded-full"
+          role="progressbar"
+          aria-valuenow={watchedPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Watch progress"
+        >
+          <motion.div
+            className={cn("h-full rounded-full", isCompleted ? "bg-success" : "bg-primary")}
+            initial={false}
+            animate={{ width: `${watchedPct}%` }}
+            transition={{ type: "spring", stiffness: 90, damping: 20 }}
+          />
+        </div>
 
-      <div className="flex flex-col gap-4">
+        {/* Notes get the full width under the video — a real writing surface,
+            wired to the player for insert-timestamp and click-to-seek. */}
         <NotesPanel
           key={currentVideoId}
           videoId={currentVideoId}
           enrollmentId={enrollmentId}
-          className="hidden lg:flex"
+          getPlayerTime={() => playerRef.current?.getCurrentTime() ?? null}
+          onSeek={(seconds) => playerRef.current?.seekTo(seconds, true)}
         />
+      </div>
 
+      <div className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
         <div className="border-border bg-card flex flex-col rounded-xl border">
           <div className="text-muted-foreground flex items-center gap-2 px-4 py-3 text-sm font-medium">
             <ListVideo className="size-4" />
             Up next
           </div>
-          <ol className="max-h-[420px] overflow-y-auto pb-2">
+          <ol className="max-h-[70vh] overflow-y-auto pb-2">
             {videos.map((video) => {
               const done = completedIds.has(video.id)
               const isCurrent = video.id === currentVideoId

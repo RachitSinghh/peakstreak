@@ -9,6 +9,14 @@ import { getPlaylistNotes } from "@/lib/notes"
 
 export const metadata: Metadata = { title: "All notes" }
 
+function clockLabel(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const mm = h > 0 ? String(m).padStart(2, "0") : String(m)
+  return `${h > 0 ? `${h}:` : ""}${mm}:${String(s % 60).padStart(2, "0")}`
+}
+
 export default async function PlaylistNotesPage({
   params,
 }: {
@@ -45,22 +53,34 @@ export default async function PlaylistNotesPage({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {notes.map((note) => (
-            <article key={note.videoId} className="border-border bg-card rounded-xl border p-5">
-              <div className="mb-2 flex items-baseline justify-between gap-3">
-                <h2 className="text-sm font-semibold">
-                  <Link
-                    href={`/playlists/${enrollmentId}/watch/${note.videoId}`}
-                    className="hover:text-primary"
-                  >
-                    {note.position + 1}. {note.videoTitle}
-                  </Link>
-                </h2>
-                <span className="text-muted-foreground shrink-0 text-xs">
-                  {note.updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                </span>
-              </div>
-              <p className="text-secondary-foreground text-sm whitespace-pre-wrap">{note.content}</p>
+          {notes.map((group) => (
+            <article key={group.videoId} className="border-border bg-card rounded-xl border p-5">
+              <h2 className="mb-3 text-sm font-semibold">
+                <Link
+                  href={`/playlists/${enrollmentId}/watch/${group.videoId}`}
+                  className="hover:text-primary"
+                >
+                  {group.position + 1}. {group.videoTitle}
+                </Link>
+              </h2>
+              <ul className="flex flex-col gap-2.5">
+                {group.entries.map((entry) => (
+                  <li key={entry.id} className="flex items-start gap-3">
+                    {entry.timestampSeconds != null ? (
+                      <span className="text-muted-foreground border-border bg-secondary/60 mt-0.5 inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-mono text-xs">
+                        {clockLabel(entry.timestampSeconds)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground/50 mt-0.5 shrink-0 font-mono text-xs">
+                        —
+                      </span>
+                    )}
+                    <p className="text-secondary-foreground min-w-0 flex-1 text-sm whitespace-pre-wrap">
+                      {entry.body}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </article>
           ))}
         </div>

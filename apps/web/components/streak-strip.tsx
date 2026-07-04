@@ -1,3 +1,6 @@
+"use client"
+
+import { motion } from "motion/react"
 import { Flame, Snowflake, Trophy } from "lucide-react"
 
 import { cn } from "@workspace/ui/lib/utils"
@@ -17,12 +20,24 @@ export function StreakStrip({ streak }: { streak: StreakSummary }) {
   return (
     <div className="border-border bg-card flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border px-5 py-4">
       <div className="flex items-center gap-2.5">
-        <Flame
-          className={cn(
-            "size-7",
-            streak.activeToday ? "fill-primary/30 text-primary" : "text-muted-foreground",
-          )}
-        />
+        {/* DESIGN.md §6.5: flame-lighting micro-animation when today is lit. */}
+        <motion.div
+          initial={streak.activeToday ? { scale: 0.4, rotate: -12 } : false}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 320, damping: 14 }}
+        >
+          <motion.div
+            animate={streak.activeToday ? { scale: [1, 1.07, 1] } : { scale: 1 }}
+            transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut" }}
+          >
+            <Flame
+              className={cn(
+                "size-7",
+                streak.activeToday ? "fill-primary/30 text-primary" : "text-muted-foreground",
+              )}
+            />
+          </motion.div>
+        </motion.div>
         <div>
           <div className="font-mono text-xl leading-none font-semibold">
             {streak.currentStreak}

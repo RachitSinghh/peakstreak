@@ -1,12 +1,13 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 import { z } from "zod"
 
 import { track } from "@/lib/analytics"
 import { currentUserId } from "@/lib/auth"
 import { db, schema } from "@/lib/db"
 import { requireEnrollment } from "@/lib/dashboard"
+import { compareEntries, type NoteEntry } from "@/lib/notes"
 
-/** Loads the caller's note for a video. Notes are strictly private. */
+/** Lists the caller's note entries for a video. Notes are strictly private. */
 export async function GET(request: Request) {
   const userId = await currentUserId()
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -16,55 +17,87 @@ export async function GET(request: Request) {
     return Response.json({ error: "invalid_params" }, { status: 400 })
   }
 
-  const note = await db.query.notes.findFirst({
-    where: and(eq(schema.notes.userId, userId), eq(schema.notes.videoId, videoId)),
-  })
-  return Response.json({
-    content: note?.content ?? "",
-    updatedAt: note?.updatedAt?.toISOString() ?? null,
-  })
+  const rows = await db
+    .select({
+      id: schema.noteEntries.id,
+      timestampSeconds: schema.noteEntries.timestampSeconds,
+      body: schema.noteEntries.body,
+      createdAt: schema.noteEntries.createdAt,
+    })
+    .from(schema.noteEntries)
+    .where(and(eq(schema.noteEntries.userId, userId), eq(schema.noteEntries.videoId, videoId)))
+    .orderBy(asc(schema.noteEntries.createdAt))
+
+  const entries = (rows as NoteEntry[]).sort(compareEntries)
+  return Response.json({ entries: entries.map(serialize) })
 }
 
-const putSchema = z.object({
+const postSchema = z.object({
   videoId: z.string().uuid(),
   enrollmentId: z.string().uuid(),
-  content: z.string().max(100_000),
+  body: z.string().trim().min(1).max(10_000),
+  // Video moment the note pins to. Omit/null for an untimed note.
+  timestampSeconds: z.number().int().min(0).max(24 * 3600).nullable().optional(),
 })
 
-/** Autosave upsert — one note document per (user, video). */
-export async function PUT(request: Request) {
+/** Creates one timestamped note entry. */
+export async function POST(request: Request) {
   const userId = await currentUserId()
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const parsed = putSchema.safeParse(await request.json().catch(() => null))
+  const parsed = postSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return Response.json({ error: "invalid_body" }, { status: 400 })
-  const { videoId, enrollmentId, content } = parsed.data
+  const { videoId, enrollmentId, body, timestampSeconds } = parsed.data
 
-  // Ownership of the enrollment gates note creation; the (user, video)
-  // unique key keeps reads scoped to the caller regardless.
+  // Ownership of the enrollment gates note creation.
   const enrollment = await requireEnrollment(userId, enrollmentId)
   if (!enrollment) return Response.json({ error: "not_found" }, { status: 404 })
 
-  const existing = await db.query.notes.findFirst({
-    where: and(eq(schema.notes.userId, userId), eq(schema.notes.videoId, videoId)),
-    columns: { id: true },
-  })
-
-  const now = new Date()
-  const [note] = await db
-    .insert(schema.notes)
-    .values({ userId, videoId, userPlaylistId: enrollmentId, content })
-    .onConflictDoUpdate({
-      target: [schema.notes.userId, schema.notes.videoId],
-      set: { content, updatedAt: now },
-      // Never let one user's write path touch another's row.
-      setWhere: sql`${schema.notes.userId} = ${userId}`,
+  const [entry] = await db
+    .insert(schema.noteEntries)
+    .values({
+      userId,
+      videoId,
+      userPlaylistId: enrollmentId,
+      body,
+      timestampSeconds: timestampSeconds ?? null,
     })
-    .returning({ updatedAt: schema.notes.updatedAt })
+    .returning({
+      id: schema.noteEntries.id,
+      timestampSeconds: schema.noteEntries.timestampSeconds,
+      body: schema.noteEntries.body,
+      createdAt: schema.noteEntries.createdAt,
+    })
 
-  if (!existing && content.trim() !== "") {
-    track("note_created", { userId, properties: { videoId, enrollmentId } })
+  track("note_created", { userId, properties: { videoId, enrollmentId } })
+  return Response.json({ entry: serialize(entry as NoteEntry) }, { status: 201 })
+}
+
+const deleteSchema = z.object({ id: z.string().uuid() })
+
+/** Deletes one of the caller's note entries. */
+export async function DELETE(request: Request) {
+  const userId = await currentUserId()
+  if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  const parsed = deleteSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return Response.json({ error: "invalid_body" }, { status: 400 })
+
+  // The user_id predicate makes this safe: one user can never delete another's.
+  const deleted = await db
+    .delete(schema.noteEntries)
+    .where(and(eq(schema.noteEntries.id, parsed.data.id), eq(schema.noteEntries.userId, userId)))
+    .returning({ id: schema.noteEntries.id })
+
+  if (deleted.length === 0) return Response.json({ error: "not_found" }, { status: 404 })
+  return Response.json({ deleted: true })
+}
+
+function serialize(entry: NoteEntry) {
+  return {
+    id: entry.id,
+    timestampSeconds: entry.timestampSeconds,
+    body: entry.body,
+    createdAt: entry.createdAt instanceof Date ? entry.createdAt.toISOString() : entry.createdAt,
   }
-
-  return Response.json({ saved: true, updatedAt: note!.updatedAt.toISOString() })
 }

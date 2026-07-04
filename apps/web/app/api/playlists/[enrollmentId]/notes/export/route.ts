@@ -3,6 +3,14 @@ import { z } from "zod"
 import { currentUserId } from "@/lib/auth"
 import { getPlaylistNotes } from "@/lib/notes"
 
+function clockLabel(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const mm = h > 0 ? String(m).padStart(2, "0") : String(m)
+  return `${h > 0 ? `${h}:` : ""}${mm}:${String(s % 60).padStart(2, "0")}`
+}
+
 /**
  * PS-11: one-click notes export — every note for the playlist compiled
  * into a single downloadable markdown document, in video order.
@@ -24,8 +32,13 @@ export async function GET(_request: Request, ctx: { params: Promise<{ enrollment
   }
 
   const lines: string[] = [`# ${data.playlistTitle} — Notes`, ""]
-  for (const note of data.notes) {
-    lines.push(`## ${note.position + 1}. ${note.videoTitle}`, "", note.content.trim(), "")
+  for (const group of data.notes) {
+    lines.push(`## ${group.position + 1}. ${group.videoTitle}`, "")
+    for (const entry of group.entries) {
+      const stamp = entry.timestampSeconds != null ? `\`${clockLabel(entry.timestampSeconds)}\` ` : ""
+      lines.push(`- ${stamp}${entry.body.trim().replace(/\n/g, "\n  ")}`)
+    }
+    lines.push("")
   }
   if (data.notes.length === 0) {
     lines.push("_No notes were written for this playlist._", "")
