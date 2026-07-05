@@ -9,6 +9,7 @@ import { getDashboard, type DashboardEnrollment } from "@/lib/dashboard"
 import { ContributionGraph } from "@/components/contribution-graph"
 import { PlaylistCard } from "@/components/playlist-card"
 import { StreakStrip } from "@/components/streak-strip"
+import { FadeUp } from "@/components/motion/fade-up"
 
 export const metadata: Metadata = { title: "Dashboard" }
 
@@ -41,31 +42,41 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <StreakStrip streak={streak} />
-      {!isEmpty && <ContributionGraph days={activityDays} today={today} />}
+      <FadeUp>
+        <StreakStrip streak={streak} />
+      </FadeUp>
+      {!isEmpty && (
+        <FadeUp delay={0.08}>
+          <ContributionGraph days={activityDays} today={today} />
+        </FadeUp>
+      )}
 
       {isEmpty ? (
-        <div className="border-border bg-card flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-20 text-center">
-          <ListPlus className="text-muted-foreground size-10" />
-          <div>
-            <h2 className="text-lg font-semibold">Paste your first playlist</h2>
-            <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
-              Drop in any YouTube playlist link — we&apos;ll tell you exactly how long it takes to
-              finish, and keep you honest about it.
-            </p>
+        <FadeUp delay={0.1}>
+          <div className="border-border bg-card flex flex-col items-center gap-4 rounded-xl border border-dashed px-6 py-20 text-center">
+            <ListPlus className="text-muted-foreground size-10" />
+            <div>
+              <h2 className="text-lg font-semibold">Paste your first playlist</h2>
+              <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
+                Drop in any YouTube playlist link — we&apos;ll tell you exactly how long it takes to
+                finish, and keep you honest about it.
+              </p>
+            </div>
+            <Button size="lg" render={<Link href="/playlists/new" />}>
+              Add a playlist
+            </Button>
           </div>
-          <Button size="lg" render={<Link href="/playlists/new" />}>
-            Add a playlist
-          </Button>
-        </div>
+        </FadeUp>
       ) : (
         <>
           {active.length > 0 && (
             <section>
-              <h2 className="text-muted-foreground mb-3 text-sm font-medium">In progress</h2>
+              <FadeUp delay={0.16}>
+                <h2 className="text-muted-foreground mb-3 text-sm font-medium">In progress</h2>
+              </FadeUp>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {active.map((e) => (
-                  <PlaylistCard key={e.id} {...toCardProps(e)} />
+                {active.map((e, i) => (
+                  <PlaylistCard key={e.id} index={i} {...toCardProps(e)} />
                 ))}
               </div>
             </section>
@@ -73,10 +84,12 @@ export default async function DashboardPage() {
 
           {completed.length > 0 && (
             <section>
-              <h2 className="text-muted-foreground mb-3 text-sm font-medium">Completed</h2>
+              <FadeUp delay={0.2}>
+                <h2 className="text-muted-foreground mb-3 text-sm font-medium">Completed</h2>
+              </FadeUp>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {completed.map((e) => (
-                  <PlaylistCard key={e.id} {...toCardProps(e)} />
+                {completed.map((e, i) => (
+                  <PlaylistCard key={e.id} index={i} {...toCardProps(e)} />
                 ))}
               </div>
             </section>
@@ -84,10 +97,12 @@ export default async function DashboardPage() {
 
           {archived.length > 0 && (
             <section>
-              <h2 className="text-muted-foreground mb-3 text-sm font-medium">Archived</h2>
+              <FadeUp delay={0.24}>
+                <h2 className="text-muted-foreground mb-3 text-sm font-medium">Archived</h2>
+              </FadeUp>
               <div className="grid grid-cols-1 gap-4 opacity-70 sm:grid-cols-2 lg:grid-cols-3">
-                {archived.map((e) => (
-                  <PlaylistCard key={e.id} {...toCardProps(e)} />
+                {archived.map((e, i) => (
+                  <PlaylistCard key={e.id} index={i} {...toCardProps(e)} />
                 ))}
               </div>
             </section>

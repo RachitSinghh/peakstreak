@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { Archive, ArchiveRestore, CalendarDays, MoreVertical, Play } from "lucide-react"
 import { useTransition } from "react"
+import { motion, useReducedMotion } from "motion/react"
 
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -11,7 +12,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
-import { Progress } from "@workspace/ui/components/progress"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { archivePlaylist, restorePlaylist } from "@/app/(app)/playlists/actions"
@@ -31,6 +31,8 @@ export interface PlaylistCardProps {
   aheadDays: number | null
   continueVideoId: string | null
   completedAtLabel?: string | null
+  /** Position within its grid — staggers the entrance reveal. */
+  index?: number
 }
 
 function prettyDate(dateStr: string): string {
@@ -45,22 +47,33 @@ function prettyDate(dateStr: string): string {
 
 export function PlaylistCard(props: PlaylistCardProps) {
   const [pending, startTransition] = useTransition()
+  const reduce = useReducedMotion()
   const pct = props.videoCount > 0 ? (props.completedCount / props.videoCount) * 100 : 0
+  const delay = reduce ? 0 : Math.min(props.index ?? 0, 8) * 0.05
 
   return (
-    <div
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay }}
+      whileHover={reduce ? undefined : { y: -4 }}
       className={cn(
-        "border-border bg-card group flex flex-col overflow-hidden rounded-xl border transition-colors",
+        "border-border bg-card group hover:border-primary/40 flex flex-col overflow-hidden rounded-xl border transition-colors hover:shadow-[0_8px_30px_-12px_rgba(94,106,210,0.35)]",
         pending && "opacity-50",
       )}
     >
       <div className="relative aspect-video w-full overflow-hidden">
         {props.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={props.thumbnailUrl} alt="" className="size-full object-cover" />
+          <img
+            src={props.thumbnailUrl}
+            alt=""
+            className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+          />
         ) : (
           <div className="bg-secondary size-full" />
         )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <span className="absolute right-2 bottom-2 rounded-md bg-black/70 px-1.5 py-0.5 font-mono text-xs text-white">
           {formatDuration(props.totalDurationSeconds)}
         </span>
@@ -102,7 +115,14 @@ export function PlaylistCard(props: PlaylistCardProps) {
         </div>
 
         <div>
-          <Progress value={pct} className="h-1.5" />
+          <div className="bg-secondary h-1.5 w-full overflow-hidden rounded-full">
+            <motion.div
+              className="bg-primary h-full rounded-full"
+              initial={reduce ? false : { width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1], delay: delay + 0.15 }}
+            />
+          </div>
           <div className="text-muted-foreground mt-1.5 flex justify-between text-xs">
             <span>
               <span className="text-foreground font-mono font-medium">
@@ -140,10 +160,10 @@ export function PlaylistCard(props: PlaylistCardProps) {
             </Button>
           ) : props.continueVideoId ? (
             <Button
-              className="w-full"
+              className="group/btn w-full"
               render={<Link href={`/playlists/${props.id}/watch/${props.continueVideoId}`} />}
             >
-              <Play className="size-4" />
+              <Play className="size-4 transition-transform duration-200 group-hover/btn:scale-110" />
               Continue
             </Button>
           ) : (
@@ -153,6 +173,6 @@ export function PlaylistCard(props: PlaylistCardProps) {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

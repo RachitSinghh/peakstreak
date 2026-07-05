@@ -6,6 +6,7 @@ import { Flame, Snowflake, Trophy } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
 
 import type { StreakSummary } from "@/lib/streaks"
+import { useCountUp } from "@/components/motion/use-count-up"
 
 function prettyShortDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number)
@@ -17,6 +18,8 @@ function prettyShortDate(dateStr: string): string {
 }
 
 export function StreakStrip({ streak }: { streak: StreakSummary }) {
+  const currentStreak = useCountUp(streak.currentStreak)
+  const longestStreak = useCountUp(streak.longestStreak)
   return (
     <div className="border-border bg-card flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border px-5 py-4">
       <div className="flex items-center gap-2.5">
@@ -39,8 +42,8 @@ export function StreakStrip({ streak }: { streak: StreakSummary }) {
           </motion.div>
         </motion.div>
         <div>
-          <div className="font-mono text-xl leading-none font-semibold">
-            {streak.currentStreak}
+          <div className="font-mono text-xl leading-none font-semibold tabular-nums">
+            {currentStreak}
           </div>
           <div className="text-muted-foreground text-xs">
             day streak
@@ -52,7 +55,8 @@ export function StreakStrip({ streak }: { streak: StreakSummary }) {
       <div className="flex items-center gap-2">
         <Trophy className="text-muted-foreground size-4" />
         <span className="text-muted-foreground text-sm">
-          Longest <span className="text-foreground font-mono font-medium">{streak.longestStreak}</span>
+          Longest{" "}
+          <span className="text-foreground font-mono font-medium tabular-nums">{longestStreak}</span>
         </span>
       </div>
 

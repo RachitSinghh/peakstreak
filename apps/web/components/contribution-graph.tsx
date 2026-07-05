@@ -77,7 +77,10 @@ export function ContributionGraph({ days, today }: { days: GraphDay[]; today: st
                 <div
                   key={date}
                   title={date <= today ? tooltip(date) : undefined}
-                  className={cn("size-2.5 rounded-[3px]", cellClass(date))}
+                  className={cn(
+                    "size-2.5 rounded-[3px] transition-transform duration-150 hover:scale-150",
+                    cellClass(date),
+                  )}
                 />
               ))}
             </div>

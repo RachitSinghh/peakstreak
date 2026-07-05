@@ -27,7 +27,7 @@ export function SiteHeader() {
       className="fixed inset-x-0 top-0 z-50 border-b border-transparent transition-colors duration-300 data-[stuck=true]:border-border data-[stuck=true]:bg-background/70 data-[stuck=true]:backdrop-blur-xl"
     >
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-        <Link href="/" className="text-base font-semibold tracking-tight">
+        <Link href="/dashboard" className="text-base font-semibold tracking-tight">
           Peak<span className="text-primary">Streak</span>
         </Link>
         <div className="flex items-center gap-2">
