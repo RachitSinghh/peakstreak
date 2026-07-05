@@ -22,6 +22,13 @@
       "when": 1783205628675,
       "tag": "0002_unknown_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783246096118,
+      "tag": "0003_early_venom",
+      "breakpoints": true
     }
   ]
 }

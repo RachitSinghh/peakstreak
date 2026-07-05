@@ -74,6 +74,24 @@ export const verificationTokens = pgTable(
   (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })],
 )
 
+// Single-use, expiring password-reset tokens. We store only the SHA-256 of
+// the token; the raw value exists solely in the emailed link, so a leaked
+// database row can't be used to reset an account.
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("password_reset_tokens_user_idx").on(t.userId)],
+)
+
 // ── Shared YouTube metadata cache (not user-owned) ──────────────
 
 export const playlists = pgTable("playlists", {
@@ -298,4 +316,22 @@ export const emailLog = pgTable(
     uniqueIndex("email_log_user_type_date_idx").on(t.userId, t.type, t.sentOnLocalDate),
     index("email_log_user_sent_idx").on(t.userId, t.sentAt.desc()),
   ],
+)
+
+// ── Feedback (in-app "Send feedback" form) ──────────────────────
+// Durable record of every submission; also emailed to FEEDBACK_TO when set.
+// user_id/email are nullable so signed-out visitors can still send feedback.
+
+export const feedback = pgTable(
+  "feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    email: text("email"),
+    message: text("message").notNull(),
+    // The path the user was on when they submitted, for context.
+    path: text("path"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("feedback_created_idx").on(t.createdAt.desc())],
 )

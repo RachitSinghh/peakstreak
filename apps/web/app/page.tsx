@@ -39,8 +39,11 @@ export default async function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-border text-muted-foreground border-t py-8 text-center text-xs">
-        PeakStreak — for people who save playlists with real intent.
+      <footer className="border-border text-muted-foreground flex flex-col items-center gap-2 border-t py-8 text-center text-xs">
+        <p>PeakStreak — for people who save playlists with real intent.</p>
+        <Link href="/feedback" className="hover:text-foreground underline-offset-4 hover:underline">
+          Send feedback
+        </Link>
       </footer>
     </div>
   )

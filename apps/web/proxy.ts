@@ -1,7 +1,15 @@
 import { getToken } from "next-auth/jwt"
 import { NextResponse, type NextRequest } from "next/server"
 
-const PUBLIC_PAGES = new Set(["/", "/login", "/signup", "/forgot-password", "/privacy"])
+const PUBLIC_PAGES = new Set([
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/feedback",
+  "/privacy",
+])
 
 // These API routes carry their own auth (cron secret, unsubscribe token)
 // or are intentionally public (health, auth handshake, anonymous preview).

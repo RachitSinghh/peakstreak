@@ -19,6 +19,9 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("PeakStreak <nudge@localhost>"),
+  // Inbox that receives "Send feedback" submissions. Optional — without it,
+  // feedback is still stored in the DB, just not emailed.
+  FEEDBACK_TO: z.string().email().optional(),
   CRON_SECRET: z.string().optional(),
 })
 

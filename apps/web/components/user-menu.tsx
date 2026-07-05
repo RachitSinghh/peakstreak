@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { LogOut, Settings } from "lucide-react"
+import { LogOut, MessageSquare, Settings } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import {
@@ -47,6 +47,10 @@ export function UserMenu({
         <DropdownMenuItem render={<Link href="/settings" />}>
           <Settings className="size-4" />
           Settings
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/feedback" />}>
+          <MessageSquare className="size-4" />
+          Send feedback
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {/* Base UI menu items take onClick — onSelect is a Radix prop it ignores. */}
