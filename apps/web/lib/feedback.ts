@@ -23,7 +23,7 @@ export async function submitFeedback(input: FeedbackInput): Promise<void> {
     path: input.path,
   })
 
-  const to = env().FEEDBACK_TO
+  const to = env().FEEDBACK_EMAIL
   if (!to) return
 
   try {

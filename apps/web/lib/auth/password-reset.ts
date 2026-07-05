@@ -39,12 +39,21 @@ export async function requestPasswordReset(rawEmail: string): Promise<void> {
 
   const resetUrl = `${env().NEXT_PUBLIC_APP_URL}/reset-password?token=${rawToken}`
   const message = passwordResetEmail({ name: user.name, resetUrl, expiresIn: EXPIRES_IN_LABEL })
-  await sendEmail({
-    to: user.email,
-    subject: message.subject,
-    html: message.html,
-    text: message.text,
-  })
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+    })
+  } catch (error) {
+    // The token is already stored. A mail-provider failure must not 500 the
+    // request or make its response differ from the "no such account" path —
+    // that difference would leak which emails are registered. Log loudly for
+    // the operator (this is where a misconfigured Resend domain shows up) and
+    // let the caller return the same neutral confirmation.
+    console.error("[password-reset] reset email failed to send:", error)
+  }
 }
 
 export type ResetOutcome = "ok" | "invalid" | "expired"

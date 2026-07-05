@@ -21,7 +21,7 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().default("PeakStreak <nudge@localhost>"),
   // Inbox that receives "Send feedback" submissions. Optional — without it,
   // feedback is still stored in the DB, just not emailed.
-  FEEDBACK_TO: z.string().email().optional(),
+  FEEDBACK_EMAIL: z.string().email().optional(),
   CRON_SECRET: z.string().optional(),
 })
 
