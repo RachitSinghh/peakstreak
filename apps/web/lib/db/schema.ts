@@ -33,6 +33,11 @@ export const users = pgTable("users", {
   // IANA zone. Defines the user's day boundary for streaks and reminders.
   timezone: text("timezone").notNull().default("Asia/Kolkata"),
   onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+  // Community leaderboard: opt-out (visible by default), shown by a chosen
+  // display name only — never the email. Null displayName falls back to the
+  // first name, then an anonymous "Learner #…" label.
+  showOnLeaderboard: boolean("show_on_leaderboard").notNull().default(true),
+  displayName: text("display_name"),
   ...timestamps,
 })
 

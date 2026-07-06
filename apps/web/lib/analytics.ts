@@ -14,6 +14,7 @@ export type EventName =
   | "reminder_opened"
   | "playlist_completed"
   | "feedback_submitted"
+  | "leaderboard_viewed"
 
 /**
  * PS-14: best-effort event tracking into the self-hosted events table.

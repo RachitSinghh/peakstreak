@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { toast } from "sonner"
 
 import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import {
   Select,
@@ -30,10 +31,14 @@ export function SettingsForm(props: {
   timezone: string
   remindersEnabled: boolean
   reminderHourLocal: number
+  showOnLeaderboard: boolean
+  displayName: string
 }) {
   const [timezone, setTimezone] = useState(props.timezone)
   const [remindersEnabled, setRemindersEnabled] = useState(props.remindersEnabled)
   const [hour, setHour] = useState(props.reminderHourLocal)
+  const [showOnLeaderboard, setShowOnLeaderboard] = useState(props.showOnLeaderboard)
+  const [displayName, setDisplayName] = useState(props.displayName)
   const [pending, startTransition] = useTransition()
 
   function submit() {
@@ -42,6 +47,8 @@ export function SettingsForm(props: {
         timezone,
         remindersEnabled,
         reminderHourLocal: hour,
+        showOnLeaderboard,
+        displayName: displayName.trim(),
       })
       if (result.error) toast.error(result.error)
       else toast.success("Settings saved")
@@ -102,6 +109,40 @@ export function SettingsForm(props: {
           </Select>
         </div>
       )}
+
+      <div className="border-border flex flex-col gap-4 border-t pt-6">
+        <div className="border-border bg-card flex items-center justify-between rounded-xl border p-4">
+          <div>
+            <Label htmlFor="leaderboard-toggle">Show me on the leaderboard</Label>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              Your activity appears under a display name only — never your email.
+            </p>
+          </div>
+          <input
+            id="leaderboard-toggle"
+            type="checkbox"
+            checked={showOnLeaderboard}
+            onChange={(e) => setShowOnLeaderboard(e.target.checked)}
+            className="accent-primary size-5"
+          />
+        </div>
+
+        {showOnLeaderboard && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="display-name">Display name</Label>
+            <Input
+              id="display-name"
+              value={displayName}
+              maxLength={40}
+              placeholder="Defaults to your first name"
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              Leave blank to use your first name, or an anonymous label if you have none.
+            </p>
+          </div>
+        )}
+      </div>
 
       <Button onClick={submit} disabled={pending} className="self-start">
         {pending ? "Saving…" : "Save settings"}

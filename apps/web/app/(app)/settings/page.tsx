@@ -26,6 +26,8 @@ export default async function SettingsPage() {
         timezone={user.timezone}
         remindersEnabled={prefs?.remindersEnabled ?? true}
         reminderHourLocal={prefs?.reminderHourLocal ?? 19}
+        showOnLeaderboard={user.showOnLeaderboard}
+        displayName={user.displayName ?? ""}
       />
     </div>
   )
