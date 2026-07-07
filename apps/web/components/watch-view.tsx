@@ -125,7 +125,10 @@ export function WatchView({
 
   const [popupState, setPopupState] = useState<"idle" | "tracking" | "confirm" | "blocked">("idle")
   const [popupElapsed, setPopupElapsed] = useState(0)
-  const popupRef = useRef<Window | null>(null)
+  // Wall-clock start of the tracking session. Elapsed time is recomputed
+  // from this on every tick, so background-tab timer throttling can only
+  // delay updates, never lose time.
+  const popupStartedAtRef = useRef(0)
   const popupStartPosRef = useRef(0)
   // Mirror of watchedSeconds for the popup tick's duration guard.
   const watchedRef = useRef(initialSecondsWatched)
@@ -289,42 +292,37 @@ export function WatchView({
   useEffect(() => {
     setPopupState("idle")
     setPopupElapsed(0)
-    popupRef.current = null
     watchedRef.current = initialSecondsWatched
   }, [currentVideoId, initialSecondsWatched])
 
-  // Popup tracker: while the YouTube window is open, wall-clock seconds
-  // feed the same heartbeat pipeline as the embedded player (we can't see
-  // YouTube's playhead or rate cross-origin — popup.closed is all we read).
+  // Popup tracker: while the user watches on YouTube, wall-clock seconds
+  // feed the same heartbeat pipeline as the embedded player. YouTube's
+  // COOP header severs the window.open handle (popup.closed reads true
+  // while the window is wide open), so there is no close signal — the
+  // session ends when the user clicks "I'm done" or navigates away.
   useEffect(() => {
     if (popupState !== "tracking") return
-    let sinceFlush = 0
-    let elapsed = 0
-    const timer = setInterval(() => {
-      const popup = popupRef.current
-      if (!popup || popup.closed) {
-        popupRef.current = null
-        void sendHeartbeat()
-        setPopupState(completedRef.current ? "idle" : "confirm")
-        return
-      }
-      elapsed += 1
+    let lastElapsed = 0
+    let lastFlushedElapsed = 0
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - popupStartedAtRef.current) / 1000)
       setPopupElapsed(elapsed)
       // Never accrue past the video's length — wall-clock is an estimate,
       // and daily-activity seconds are not clamped server-side.
       if (watchedRef.current + pendingRef.current < current.durationSeconds) {
-        pendingRef.current += 1
+        pendingRef.current += elapsed - lastElapsed
       }
+      lastElapsed = elapsed
       furthestRef.current = Math.min(
         current.durationSeconds,
         Math.max(furthestRef.current, popupStartPosRef.current + elapsed),
       )
-      sinceFlush += 1
-      if (sinceFlush >= HEARTBEAT_INTERVAL_S) {
-        sinceFlush = 0
+      if (elapsed - lastFlushedElapsed >= HEARTBEAT_INTERVAL_S) {
+        lastFlushedElapsed = elapsed
         void sendHeartbeat()
       }
-    }, 1000)
+    }
+    const timer = setInterval(tick, 1000)
     return () => {
       clearInterval(timer)
       void sendHeartbeat(true)
@@ -336,17 +334,22 @@ export function WatchView({
     (startAtSeconds > 0 ? `&t=${startAtSeconds}s` : "")
 
   function openOnYouTube() {
-    // No "noopener" feature here — it would force a null return and kill
-    // close-detection. We only ever read popup.closed.
+    // The handle is only good for popup-blocker detection: YouTube's COOP
+    // header severs it as soon as the page loads.
     const popup = window.open(youtubeWatchUrl, "_blank")
     if (!popup) {
       setPopupState("blocked")
       return
     }
-    popupRef.current = popup
+    popupStartedAtRef.current = Date.now()
     popupStartPosRef.current = startAtSeconds
     setPopupElapsed(0)
     setPopupState("tracking")
+  }
+
+  function endPopupSession() {
+    void sendHeartbeat()
+    setPopupState(completedRef.current ? "idle" : "confirm")
   }
 
   async function toggleComplete() {
@@ -444,9 +447,9 @@ export function WatchView({
                       Watching on YouTube · tracking your time
                     </p>
                     <p className="font-mono text-3xl text-white">{clockLabel(popupElapsed)}</p>
-                    <p className="text-sm text-white/70">
-                      Close the YouTube window when you&apos;re done.
-                    </p>
+                    <Button variant="outline" onClick={endPopupSession}>
+                      I&apos;m done watching
+                    </Button>
                   </>
                 )}
                 {popupState === "confirm" && (
