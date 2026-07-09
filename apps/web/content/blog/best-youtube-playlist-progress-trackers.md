@@ -9,7 +9,7 @@ secondaryKeywords:
   - best way to track youtube course
   - streak tracker for youtube learning
 intent: commercial
-status: draft
+status: published
 order: 3
 ---
 

@@ -8,7 +8,7 @@ secondaryKeywords:
   - finish youtube playlist without quitting
   - stay consistent learning on youtube
 intent: informational
-status: draft
+status: published
 order: 1
 ---
 

@@ -9,7 +9,7 @@ secondaryKeywords:
   - how long is a youtube playlist
   - youtube playlist duration
 intent: transactional
-status: draft
+status: published
 order: 2
 ---
 
