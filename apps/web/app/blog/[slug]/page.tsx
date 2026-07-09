@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { SiteHeader } from "@/components/landing/site-header"
+import { SiteFooter } from "@/components/site-footer"
 import { Markdown } from "@/components/blog/markdown"
 import { getAllPosts, getPost } from "@/lib/blog"
 
@@ -110,17 +111,7 @@ export default async function BlogPostPage({
         </div>
       </main>
 
-      <footer className="border-border text-muted-foreground flex flex-col items-center gap-2 border-t py-8 text-center text-xs">
-        <p>PeakStreak — for people who save playlists with real intent.</p>
-        <div className="flex items-center gap-4">
-          <Link href="/" className="hover:text-foreground underline-offset-4 hover:underline">
-            Home
-          </Link>
-          <Link href="/blog" className="hover:text-foreground underline-offset-4 hover:underline">
-            Blog
-          </Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

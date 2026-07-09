@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 
 import { SiteHeader } from "@/components/landing/site-header"
+import { SiteFooter } from "@/components/site-footer"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
 import { StreakBand } from "@/components/landing/streak-band"
@@ -65,20 +66,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-border text-muted-foreground flex flex-col items-center gap-2 border-t py-8 text-center text-xs">
-        <p>PeakStreak — for people who save playlists with real intent.</p>
-        <div className="flex items-center gap-4">
-          <Link href="/blog" className="hover:text-foreground underline-offset-4 hover:underline">
-            Blog
-          </Link>
-          <Link
-            href="/feedback"
-            className="hover:text-foreground underline-offset-4 hover:underline"
-          >
-            Send feedback
-          </Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

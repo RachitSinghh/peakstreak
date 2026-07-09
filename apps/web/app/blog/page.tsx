@@ -3,6 +3,7 @@ import Link from "next/link"
 import { ArrowRight, ArrowUpRight } from "lucide-react"
 
 import { SiteHeader } from "@/components/landing/site-header"
+import { SiteFooter } from "@/components/site-footer"
 import { Reveal } from "@/components/landing/reveal"
 import { getAllPosts } from "@/lib/blog"
 
@@ -115,20 +116,7 @@ export default function BlogIndexPage() {
         </Reveal>
       </main>
 
-      <footer className="border-border text-muted-foreground flex flex-col items-center gap-2 border-t py-8 text-center text-xs">
-        <p>PeakStreak — for people who save playlists with real intent.</p>
-        <div className="flex items-center gap-4">
-          <Link href="/" className="hover:text-foreground underline-offset-4 hover:underline">
-            Home
-          </Link>
-          <Link
-            href="/feedback"
-            className="hover:text-foreground underline-offset-4 hover:underline"
-          >
-            Send feedback
-          </Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }
