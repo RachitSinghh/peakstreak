@@ -33,15 +33,8 @@ export function Ambient() {
       rest()
 
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        // second glow keeps a gentle life of its own
-        gsap.to(".ambient-glow-b", {
-          xPercent: -14,
-          yPercent: -8,
-          duration: 18,
-          repeat: -1,
-          yoyo: true,
-          ease: "sine.inOut",
-        })
+        // (The second glow's gentle drift is now a pure-CSS `.ps-drift`
+        // animation — no GSAP tick needed to keep it alive.)
 
         // smooth trailing follow — the glow eases toward the pointer
         const xTo = gsap.quickTo(el, "x", { duration: 0.9, ease: "power3.out" })
@@ -90,15 +83,17 @@ export function Ambient() {
           WebkitMaskImage: "radial-gradient(120% 90% at 50% 0%, #000 25%, transparent 75%)",
         }}
       />
-      {/* cursor-following lavender glow */}
+      {/* cursor-following lavender glow — blur trimmed from 120px to 100px:
+          a 672px box at a 120px blur is one of the most expensive things to
+          repaint, and the difference is imperceptible in the design. */}
       <div
         ref={follow}
-        className="absolute top-0 left-0 h-[42rem] w-[42rem] rounded-full blur-[120px] will-change-transform"
+        className="absolute top-0 left-0 h-[42rem] w-[42rem] rounded-full blur-[100px] will-change-transform"
         style={{ background: "radial-gradient(circle, rgba(94,106,210,0.30), transparent 62%)" }}
       />
-      {/* second, slow-drifting glow for depth */}
+      {/* second, slow-drifting glow for depth (CSS-driven drift) */}
       <div
-        className="ambient-glow-b absolute top-24 right-[8%] h-[30rem] w-[30rem] rounded-full blur-[120px]"
+        className="ps-drift absolute top-24 right-[8%] h-[30rem] w-[30rem] rounded-full blur-[100px] will-change-transform"
         style={{ background: "radial-gradient(circle, rgba(94,106,210,0.14), transparent 65%)" }}
       />
     </div>

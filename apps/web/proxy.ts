@@ -29,6 +29,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
   if (!isApi && PUBLIC_PAGES.has(pathname)) {
+    // Logged-in users skip the marketing page. Doing this redirect here (rather
+    // than with an auth() call inside app/page.tsx) is what lets the landing
+    // page stay statically prerendered — no per-request cookie read in the RSC.
+    if (pathname === "/") {
+      const token = await getToken({
+        req: request,
+        secret: process.env.AUTH_SECRET,
+        secureCookie: process.env.NODE_ENV === "production",
+      })
+      if (token) {
+        return NextResponse.redirect(new URL("/dashboard", request.url))
+      }
+    }
     return NextResponse.next()
   }
 

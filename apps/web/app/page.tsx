@@ -1,21 +1,48 @@
 import Link from "next/link"
-import { redirect } from "next/navigation"
 import { ArrowRight } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 
-import { auth } from "@/lib/auth"
 import { SiteHeader } from "@/components/landing/site-header"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
 import { StreakBand } from "@/components/landing/streak-band"
 
-export default async function LandingPage() {
-  const session = await auth()
-  if (session?.user) redirect("/dashboard")
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
+// SoftwareApplication + Organization structured data for rich results. Kept in
+// sync with the metadata in app/layout.tsx.
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      name: "PeakStreak",
+      url: APP_URL,
+      applicationCategory: "EducationalApplication",
+      operatingSystem: "Web",
+      description:
+        "Paste a YouTube playlist. See exactly how long it takes. Actually finish it — with a real finish date, a daily streak, and a nudge the moment you slip.",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    },
+    {
+      "@type": "Organization",
+      name: "PeakStreak",
+      url: APP_URL,
+    },
+  ],
+}
+
+// No auth() call here — the "logged-in → dashboard" redirect lives in proxy.ts,
+// which keeps this marketing page statically prerendered (best TTFB/LCP).
+export default function LandingPage() {
   return (
     <div className="min-h-svh overflow-x-clip">
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <SiteHeader />
 
       <main>

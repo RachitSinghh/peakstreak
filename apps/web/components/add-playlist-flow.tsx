@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useRef, useState, useTransition } from "react"
 import { CalendarDays, Clock, ListVideo, TriangleAlert } from "lucide-react"
 
@@ -181,10 +182,11 @@ export function AddPlaylistFlow({ initialUrl }: { initialUrl?: string }) {
         <div className="border-border bg-card overflow-hidden rounded-xl border">
           <div className="flex gap-4 p-5">
             {preview.thumbnailUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={preview.thumbnailUrl}
-                alt=""
+                alt={preview.title}
+                width={128}
+                height={80}
                 className="h-20 w-32 shrink-0 rounded-lg object-cover"
               />
             )}

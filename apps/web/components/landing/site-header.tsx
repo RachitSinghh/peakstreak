@@ -1,30 +1,30 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
-import { motion, useMotionValueEvent, useScroll } from "motion/react"
+import { useEffect, useState } from "react"
 
 import { Button } from "@workspace/ui/components/button"
 
 /**
  * Landing header. Transparent over the hero, then settles into a blurred,
- * bordered bar once the user scrolls past the fold.
+ * bordered bar once the user scrolls past the fold. The entrance is a CSS
+ * animation (`.ps-header-in`); the only JS is a passive scroll listener that
+ * toggles `data-stuck` — no animation library needed.
  */
 export function SiteHeader() {
-  const { scrollY } = useScroll()
   const [stuck, setStuck] = useState(false)
 
-  useMotionValueEvent(scrollY, "change", (y) => {
-    setStuck(y > 24)
-  })
+  useEffect(() => {
+    const onScroll = () => setStuck(window.scrollY > 24)
+    onScroll() // sync initial state (e.g. on refresh mid-page)
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
 
   return (
-    <motion.header
-      initial={{ y: -24, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+    <header
       data-stuck={stuck}
-      className="fixed inset-x-0 top-0 z-50 border-b border-transparent transition-colors duration-300 data-[stuck=true]:border-border data-[stuck=true]:bg-background/70 data-[stuck=true]:backdrop-blur-xl"
+      className="ps-header-in data-[stuck=true]:border-border data-[stuck=true]:bg-background/70 fixed inset-x-0 top-0 z-50 border-b border-transparent transition-colors duration-300 data-[stuck=true]:backdrop-blur-xl"
     >
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
         <Link href="/dashboard" className="text-base font-semibold tracking-tight">
@@ -39,6 +39,6 @@ export function SiteHeader() {
           </Button>
         </div>
       </div>
-    </motion.header>
+    </header>
   )
 }

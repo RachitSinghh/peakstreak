@@ -1,14 +1,11 @@
-"use client"
-
-import { motion, useReducedMotion } from "motion/react"
 import { Flame, Snowflake } from "lucide-react"
+
+import { Reveal } from "@/components/landing/reveal"
 
 const DAYS = 14
 const FROZEN = 8 // the one day a weekly freeze covered
 
 export function StreakBand() {
-  const reduce = useReducedMotion()
-
   return (
     <section className="mx-auto max-w-5xl px-4 pb-24">
       <div className="border-border bg-card/60 relative overflow-hidden rounded-3xl border p-8 sm:p-12">
@@ -35,65 +32,42 @@ export function StreakBand() {
             </p>
           </div>
 
-          <motion.div
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ staggerChildren: 0.06 }}
-            className="flex flex-wrap gap-2"
-          >
+          <Reveal className="flex flex-wrap gap-2">
             {Array.from({ length: DAYS }).map((_, i) => {
               const frozen = i === FROZEN
               return (
-                <motion.div
+                <div
                   key={i}
-                  variants={{
-                    hidden: { opacity: 0, scale: 0.4, y: 8 },
-                    show: {
-                      opacity: 1,
-                      scale: 1,
-                      y: 0,
-                      transition: { type: "spring", stiffness: 320, damping: 20 },
-                    },
-                  }}
-                  className="grid size-9 place-items-center rounded-lg border"
+                  className="ps-pop grid size-9 place-items-center rounded-lg border"
                   style={
-                    frozen
-                      ? {
-                          borderColor: "rgba(94,106,210,0.4)",
-                          background: "rgba(94,106,210,0.14)",
-                        }
-                      : {
-                          borderColor: "rgba(240,136,62,0.35)",
-                          background:
-                            "linear-gradient(160deg, rgba(240,136,62,0.22), rgba(212,167,44,0.12))",
-                        }
+                    {
+                      ["--ps-delay"]: `${i * 0.06}s`,
+                      borderColor: frozen ? "rgba(94,106,210,0.4)" : "rgba(240,136,62,0.35)",
+                      background: frozen
+                        ? "rgba(94,106,210,0.14)"
+                        : "linear-gradient(160deg, rgba(240,136,62,0.22), rgba(212,167,44,0.12))",
+                    } as React.CSSProperties
                   }
                 >
                   {frozen ? (
                     <Snowflake className="size-4" style={{ color: "#8b95e8" }} />
                   ) : (
-                    <motion.span
-                      animate={
-                        reduce
-                          ? undefined
-                          : { opacity: [0.75, 1, 0.8], scale: [1, 1.08, 1] }
+                    <span
+                      className="ps-flicker block"
+                      style={
+                        {
+                          "--ps-flicker-jitter": `${(i % 4) * 0.25}s`,
+                          "--ps-delay": `${i * 0.08}s`,
+                        } as React.CSSProperties
                       }
-                      transition={{
-                        duration: 1.6 + (i % 4) * 0.25,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: i * 0.08,
-                      }}
-                      className="block"
                     >
                       <Flame className="size-4" style={{ color: "#f0883e" }} />
-                    </motion.span>
+                    </span>
                   )}
-                </motion.div>
+                </div>
               )
             })}
-          </motion.div>
+          </Reveal>
         </div>
       </div>
     </section>

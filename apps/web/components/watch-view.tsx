@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -417,11 +418,12 @@ export function WatchView({
           {fallbackMode && (
             <div className="absolute inset-0 z-[5]">
               {current.thumbnailUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={current.thumbnailUrl}
                   alt=""
-                  className="absolute inset-0 size-full object-cover opacity-30"
+                  fill
+                  sizes="(min-width: 1024px) 66vw, 100vw"
+                  className="object-cover opacity-30"
                 />
               )}
               <div className="relative flex size-full flex-col items-center justify-center gap-4 px-6 text-center">

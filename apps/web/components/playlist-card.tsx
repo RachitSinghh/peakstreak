@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { Archive, ArchiveRestore, CalendarDays, MoreVertical, Play } from "lucide-react"
 import { useTransition } from "react"
@@ -64,11 +65,12 @@ export function PlaylistCard(props: PlaylistCardProps) {
     >
       <div className="relative aspect-video w-full overflow-hidden">
         {props.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={props.thumbnailUrl}
             alt=""
-            className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            fill
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           />
         ) : (
           <div className="bg-secondary size-full" />

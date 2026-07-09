@@ -14,13 +14,35 @@ const fontMono = JetBrains_Mono({
   variable: "--font-mono",
 })
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+const DESCRIPTION =
+  "Paste a YouTube playlist. See exactly how long it takes. Actually finish it."
+
 export const metadata: Metadata = {
+  // Required so OG/Twitter/canonical relative URLs resolve to absolute ones.
+  metadataBase: new URL(APP_URL),
   title: {
-    default: "PeakStreak",
+    default: "PeakStreak — actually finish the playlists you save",
     template: "%s · PeakStreak",
   },
-  description:
-    "Paste a YouTube playlist. See exactly how long it takes. Actually finish it.",
+  description: DESCRIPTION,
+  applicationName: "PeakStreak",
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "PeakStreak",
+    title: "PeakStreak — actually finish the playlists you save",
+    description: DESCRIPTION,
+    // og:image is auto-injected by app/opengraph-image.tsx (file convention).
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PeakStreak — actually finish the playlists you save",
+    description: DESCRIPTION,
+    // twitter:image is auto-injected from app/opengraph-image.tsx too.
+  },
 }
 
 export default function RootLayout({
