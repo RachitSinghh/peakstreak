@@ -40,7 +40,6 @@ export default function LandingPage() {
     <div className="min-h-svh overflow-x-clip">
       <script
         type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <SiteHeader />
@@ -68,9 +67,17 @@ export default function LandingPage() {
 
       <footer className="border-border text-muted-foreground flex flex-col items-center gap-2 border-t py-8 text-center text-xs">
         <p>PeakStreak — for people who save playlists with real intent.</p>
-        <Link href="/feedback" className="hover:text-foreground underline-offset-4 hover:underline">
-          Send feedback
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/blog" className="hover:text-foreground underline-offset-4 hover:underline">
+            Blog
+          </Link>
+          <Link
+            href="/feedback"
+            className="hover:text-foreground underline-offset-4 hover:underline"
+          >
+            Send feedback
+          </Link>
+        </div>
       </footer>
     </div>
   )

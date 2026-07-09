@@ -11,6 +11,11 @@ const PUBLIC_PAGES = new Set([
   "/privacy",
 ])
 
+// Public sections matched by prefix (the page itself + any sub-paths), e.g. the
+// blog index and every /blog/<slug> post. Kept separate from the exact-match
+// set above so a logged-out reader can actually reach them.
+const PUBLIC_PAGE_PREFIXES = ["/blog"]
+
 // These API routes carry their own auth (cron secret, unsubscribe token)
 // or are intentionally public (health, auth handshake, anonymous preview).
 const PUBLIC_API_PREFIXES = [
@@ -28,7 +33,11 @@ export async function proxy(request: NextRequest) {
   if (isApi && PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
   }
-  if (!isApi && PUBLIC_PAGES.has(pathname)) {
+  const isPublicPage =
+    PUBLIC_PAGES.has(pathname) ||
+    PUBLIC_PAGE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+
+  if (!isApi && isPublicPage) {
     // Logged-in users skip the marketing page. Doing this redirect here (rather
     // than with an auth() call inside app/page.tsx) is what lets the landing
     // page stay statically prerendered — no per-request cookie read in the RSC.
