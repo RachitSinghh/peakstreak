@@ -1,0 +1,1 @@
+ALTER TABLE "playlists" ALTER COLUMN "youtube_playlist_id" DROP NOT NULL;

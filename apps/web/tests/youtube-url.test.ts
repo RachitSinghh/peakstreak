@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { parsePlaylistInput } from "@/lib/youtube/url"
+import { parsePlaylistInput, parseVideoInput } from "@/lib/youtube/url"
 
 const PL = "PLWKjhJtqVAbnZtkAI3BqcYxKnfWn_C704"
+const VID = "dQw4w9WgXcQ"
 
 describe("parsePlaylistInput", () => {
   it("parses a canonical playlist URL", () => {
@@ -50,5 +51,26 @@ describe("parsePlaylistInput", () => {
     expect(parsePlaylistInput("hello world")).toBeNull()
     expect(parsePlaylistInput("http://[malformed")).toBeNull()
     expect(parsePlaylistInput("short")).toBeNull()
+  })
+})
+
+describe("parseVideoInput", () => {
+  it("parses watch, youtu.be, shorts, embed, live and bare id", () => {
+    expect(parseVideoInput(`https://www.youtube.com/watch?v=${VID}`)).toBe(VID)
+    expect(parseVideoInput(`https://www.youtube.com/watch?v=${VID}&list=${PL}`)).toBe(VID)
+    expect(parseVideoInput(`https://youtu.be/${VID}`)).toBe(VID)
+    expect(parseVideoInput(`https://youtu.be/${VID}?t=42`)).toBe(VID)
+    expect(parseVideoInput(`https://www.youtube.com/shorts/${VID}`)).toBe(VID)
+    expect(parseVideoInput(`https://www.youtube.com/embed/${VID}`)).toBe(VID)
+    expect(parseVideoInput(`youtube.com/live/${VID}`)).toBe(VID)
+    expect(parseVideoInput(VID)).toBe(VID)
+  })
+
+  it("rejects playlists, non-YouTube hosts, and garbage", () => {
+    expect(parseVideoInput(`https://www.youtube.com/playlist?list=${PL}`)).toBeNull()
+    expect(parseVideoInput(`https://evil.com/watch?v=${VID}`)).toBeNull()
+    expect(parseVideoInput("")).toBeNull()
+    expect(parseVideoInput("hello")).toBeNull()
+    expect(parseVideoInput("toolongvideoid123")).toBeNull()
   })
 })

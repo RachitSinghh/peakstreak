@@ -101,7 +101,9 @@ export const passwordResetTokens = pgTable(
 
 export const playlists = pgTable("playlists", {
   id: uuid("id").primaryKey().defaultRandom(),
-  youtubePlaylistId: text("youtube_playlist_id").notNull().unique(),
+  // Null for custom playlists (user-curated from individual videos, PS-18).
+  // Postgres allows multiple NULLs under a unique index, so no collision.
+  youtubePlaylistId: text("youtube_playlist_id").unique(),
   title: text("title").notNull(),
   channelTitle: text("channel_title"),
   thumbnailUrl: text("thumbnail_url"),

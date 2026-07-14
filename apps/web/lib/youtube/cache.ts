@@ -2,7 +2,7 @@ import { asc, eq, sql } from "drizzle-orm"
 
 import { db, schema } from "@/lib/db"
 import { env } from "@/lib/env"
-import { fetchPlaylistFromYouTube, YouTubeApiError } from "./client"
+import { fetchPlaylistFromYouTube, YouTubeApiError, type FetchedVideo } from "./client"
 
 export interface CachedVideo {
   id: string
@@ -151,6 +151,82 @@ export async function getOrSyncPlaylist(youtubePlaylistId: string): Promise<Cach
         })),
       )
     }
+
+    return playlistRow!
+  })
+
+  return { playlist, videos: await loadFromDb(playlist.id), fromCache: false }
+}
+
+/**
+ * Create a custom playlist (PS-18): a `playlists` row with `youtubePlaylistId`
+ * null, populated from hand-picked videos instead of a YouTube import. There is
+ * no upstream to sync. Everything downstream keys off the same tables, so the
+ * enrollment/streak/notes loop works unchanged. Caller must pass ≥1 video.
+ */
+export async function createCustomPlaylist(
+  title: string,
+  videos: FetchedVideo[],
+): Promise<CachedPlaylist> {
+  const totalDurationSeconds = videos.reduce((sum, v) => sum + v.durationSeconds, 0)
+  const unembeddableCount = videos.filter((v) => !v.isEmbeddable).length
+
+  const playlist = await db.transaction(async (tx) => {
+    const [playlistRow] = await tx
+      .insert(schema.playlists)
+      .values({
+        youtubePlaylistId: null,
+        title,
+        channelTitle: null,
+        thumbnailUrl: videos[0]?.thumbnailUrl ?? null,
+        videoCount: videos.length,
+        totalDurationSeconds,
+        unavailableCount: 0,
+        unembeddableCount,
+        lastSyncedAt: new Date(),
+        syncStatus: "ok",
+      })
+      .returning()
+
+    // ponytail: video upsert + ordering-join mirrors getOrSyncPlaylist's block
+    // (no delete — brand-new playlist). Kept inline rather than threading
+    // Drizzle's tx generics through a shared helper for two call sites.
+    await tx
+      .insert(schema.videos)
+      .values(
+        videos.map((v) => ({
+          youtubeVideoId: v.youtubeVideoId,
+          title: v.title,
+          durationSeconds: v.durationSeconds,
+          thumbnailUrl: v.thumbnailUrl,
+          isEmbeddable: v.isEmbeddable,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: schema.videos.youtubeVideoId,
+        set: {
+          title: sql`excluded.title`,
+          durationSeconds: sql`excluded.duration_seconds`,
+          thumbnailUrl: sql`excluded.thumbnail_url`,
+          isAvailable: sql`true`,
+          isEmbeddable: sql`excluded.is_embeddable`,
+          updatedAt: sql`now()`,
+        },
+      })
+
+    const videoRows = await tx
+      .select({ id: schema.videos.id, youtubeVideoId: schema.videos.youtubeVideoId })
+      .from(schema.videos)
+      .where(sql`${schema.videos.youtubeVideoId} in ${videos.map((v) => v.youtubeVideoId)}`)
+    const idByYoutubeId = new Map(videoRows.map((r) => [r.youtubeVideoId, r.id]))
+
+    await tx.insert(schema.playlistVideos).values(
+      videos.map((v) => ({
+        playlistId: playlistRow!.id,
+        videoId: idByYoutubeId.get(v.youtubeVideoId)!,
+        position: v.position,
+      })),
+    )
 
     return playlistRow!
   })

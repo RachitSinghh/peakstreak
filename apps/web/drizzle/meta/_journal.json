@@ -43,6 +43,13 @@
       "when": 1783413245464,
       "tag": "0005_perfect_molecule_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783978802953,
+      "tag": "0006_sour_spirit",
+      "breakpoints": true
     }
   ]
 }

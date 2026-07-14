@@ -27,6 +27,7 @@ function toCardProps(e: DashboardEnrollment) {
     daysRemaining: e.eta.daysRemaining,
     aheadDays: e.eta.aheadDays,
     continueVideoId: e.continueVideoId,
+    isCustom: e.isCustom,
     completedAtLabel: e.completedAt
       ? e.completedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       : null,

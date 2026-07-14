@@ -48,4 +48,5 @@ next-env.d.ts
 # private / internal-only docs — never commit or deploy these
 FOR-Rachit.md
 BLOG-PLAYBOOK.md
+feature-tickets.md
 _private/

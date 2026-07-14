@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { ArrowLeft, Check, CheckCircle2, Circle, ExternalLink, ListVideo } from "lucide-react"
+import { ArrowLeft, Check, CheckCircle2, Circle, ExternalLink, ListPlus, ListVideo } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button, buttonVariants } from "@workspace/ui/components/button"
@@ -86,6 +86,7 @@ export function WatchView({
   currentVideoId,
   initialSecondsWatched,
   resumePositionSeconds,
+  isCustom = false,
 }: {
   enrollmentId: string
   playlistTitle: string
@@ -93,6 +94,7 @@ export function WatchView({
   currentVideoId: string
   initialSecondsWatched: number
   resumePositionSeconds: number
+  isCustom?: boolean
 }) {
   const router = useRouter()
   const current = videos.find((v) => v.id === currentVideoId)!
@@ -648,6 +650,15 @@ export function WatchView({
               )
             })}
           </ol>
+          {isCustom && (
+            <Link
+              href={`/playlists/${enrollmentId}/add`}
+              className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary/60 flex items-center gap-2 border-t px-4 py-3 text-sm transition-colors"
+            >
+              <ListPlus className="size-4" />
+              Add a video
+            </Link>
+          )}
         </div>
       </div>
     </div>

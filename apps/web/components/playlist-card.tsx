@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Archive, ArchiveRestore, CalendarDays, MoreVertical, Play } from "lucide-react"
+import { Archive, ArchiveRestore, CalendarDays, ListPlus, MoreVertical, Play } from "lucide-react"
 import { useTransition } from "react"
 import { motion, useReducedMotion } from "motion/react"
 
@@ -32,6 +32,8 @@ export interface PlaylistCardProps {
   aheadDays: number | null
   continueVideoId: string | null
   completedAtLabel?: string | null
+  /** Custom (user-curated) playlist — shows an "Add video" action. */
+  isCustom?: boolean
   /** Position within its grid — staggers the entrance reveal. */
   index?: number
 }
@@ -107,6 +109,12 @@ export function PlaylistCard(props: PlaylistCardProps) {
                 <DropdownMenuItem onSelect={() => startTransition(() => archivePlaylist(props.id))}>
                   <Archive className="size-4" />
                   Archive
+                </DropdownMenuItem>
+              )}
+              {props.isCustom && props.status !== "archived" && (
+                <DropdownMenuItem render={<Link href={`/playlists/${props.id}/add`} />}>
+                  <ListPlus className="size-4" />
+                  Add video
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem render={<Link href={`/playlists/${props.id}/notes`} />}>

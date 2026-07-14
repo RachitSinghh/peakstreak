@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 
 import { AddPlaylistFlow } from "@/components/add-playlist-flow"
 
@@ -20,6 +21,12 @@ export default async function NewPlaylistPage({
         </p>
       </div>
       <AddPlaylistFlow initialUrl={url} />
+      <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-center text-sm">
+        No single playlist for your topic?{" "}
+        <Link href="/playlists/new/custom" className="text-primary underline-offset-4 hover:underline">
+          Build a custom one from individual videos
+        </Link>
+      </p>
     </div>
   )
 }

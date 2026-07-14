@@ -21,6 +21,8 @@ export interface DashboardEnrollment {
   continueVideoId: string | null
   completedAt: Date | null
   startedAt: Date
+  /** True for user-curated playlists (no YouTube playlist id) — can add videos. */
+  isCustom: boolean
 }
 
 export interface DashboardData {
@@ -99,6 +101,7 @@ export async function getDashboard(userId: string, now: Date = new Date()): Prom
       continueVideoId: next?.videoId ?? null,
       completedAt: row.enrollment.completedAt,
       startedAt: row.enrollment.startedAt,
+      isCustom: row.playlist.youtubePlaylistId === null,
     })
   }
 

@@ -49,3 +49,36 @@ export function parsePlaylistInput(raw: string): string | null {
   if (!list || !PLAYLIST_ID_RE.test(list)) return null
   return list
 }
+
+// YouTube video IDs are exactly 11 chars of base64url.
+const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/
+
+/**
+ * Extracts a YouTube video ID from a URL or bare ID (PS-18 custom playlists).
+ * Handles watch?v=, youtu.be/, /shorts/, /embed/, /live/. Returns null otherwise.
+ */
+export function parseVideoInput(raw: string): string | null {
+  const input = raw.trim()
+  if (!input) return null
+
+  if (!input.includes("/") && !input.includes("?") && !input.includes(".")) {
+    return VIDEO_ID_RE.test(input) ? input : null
+  }
+
+  let url: URL
+  try {
+    url = new URL(input.includes("://") ? input : `https://${input}`)
+  } catch {
+    return null
+  }
+
+  const host = url.hostname.toLowerCase().replace(/^www\./, "")
+  const allowedHosts = ["youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be"]
+  if (!allowedHosts.includes(host)) return null
+
+  // youtu.be/<id>, /shorts/<id>, /embed/<id>, /live/<id> put the id in the path;
+  // watch URLs put it in ?v=.
+  const fromQuery = url.searchParams.get("v")
+  const candidate = fromQuery ?? url.pathname.split("/").filter(Boolean).pop() ?? ""
+  return VIDEO_ID_RE.test(candidate) ? candidate : null
+}

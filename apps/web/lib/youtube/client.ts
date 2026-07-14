@@ -99,6 +99,79 @@ function bestThumbnail(thumbnails: Record<string, { url?: string }> | undefined)
   return null
 }
 
+interface VideoMeta {
+  title: string
+  durationSeconds: number
+  thumbnailUrl: string | null
+  isEmbeddable: boolean
+}
+
+/**
+ * Batched `videos.list` fetch (50/call). Returns metadata keyed by video id;
+ * private/deleted/region-blocked ids and zero-length (upcoming/live) items are
+ * simply absent. Shared by playlist import and custom-playlist creation (PS-18).
+ */
+async function fetchVideoMetaMap(
+  videoIds: string[],
+): Promise<{ meta: Map<string, VideoMeta>; apiCallCount: number }> {
+  const meta = new Map<string, VideoMeta>()
+  let apiCallCount = 0
+  for (let i = 0; i < videoIds.length; i += 50) {
+    const batch = videoIds.slice(i, i + 50)
+    apiCallCount++
+    const videoData = (await ytFetch("videos", {
+      part: "snippet,contentDetails,status",
+      id: batch.join(","),
+      maxResults: "50",
+    })) as {
+      items?: Array<{
+        id?: string
+        snippet?: { title?: string; thumbnails?: Record<string, { url?: string }> }
+        contentDetails?: { duration?: string }
+        status?: { embeddable?: boolean }
+      }>
+    }
+    for (const video of videoData.items ?? []) {
+      if (!video.id) continue
+      const durationSeconds = parseIsoDuration(video.contentDetails?.duration ?? "")
+      // Upcoming/live entries report 0s or P0D — treat them as unavailable
+      // rather than polluting runtime math with zero-length videos.
+      if (durationSeconds <= 0) continue
+      meta.set(video.id, {
+        title: video.snippet?.title ?? "Untitled video",
+        durationSeconds,
+        thumbnailUrl: bestThumbnail(video.snippet?.thumbnails),
+        // A missing status must never mark a video unembeddable.
+        isEmbeddable: video.status?.embeddable !== false,
+      })
+    }
+  }
+  return { meta, apiCallCount }
+}
+
+/**
+ * Fetch metadata for a hand-picked set of video IDs, in caller order, skipping
+ * unavailable ones. Positions are re-packed. Powers custom playlists (PS-18).
+ */
+export async function fetchVideosByIds(videoIds: string[]): Promise<FetchedVideo[]> {
+  const ordered = [...new Set(videoIds)]
+  const { meta } = await fetchVideoMetaMap(ordered)
+  const videos: FetchedVideo[] = []
+  for (const id of ordered) {
+    const m = meta.get(id)
+    if (!m) continue
+    videos.push({
+      youtubeVideoId: id,
+      title: m.title,
+      durationSeconds: m.durationSeconds,
+      thumbnailUrl: m.thumbnailUrl,
+      position: videos.length,
+      isEmbeddable: m.isEmbeddable,
+    })
+  }
+  return videos
+}
+
 /**
  * Fetches a playlist's full metadata from the YouTube Data API:
  * one `playlists` call, paginated `playlistItems` (50/page), and batched
@@ -155,41 +228,10 @@ export async function fetchPlaylistFromYouTube(playlistId: string): Promise<Fetc
   } while (pageToken)
 
   // Durations + availability come from the videos endpoint, batched by 50.
-  // Private/deleted/region-blocked videos are simply absent from the response.
-  const available = new Map<
-    string,
-    { title: string; durationSeconds: number; thumbnailUrl: string | null; isEmbeddable: boolean }
-  >()
-  for (let i = 0; i < items.length; i += 50) {
-    const batch = items.slice(i, i + 50)
-    apiCallCount++
-    const videoData = (await ytFetch("videos", {
-      part: "snippet,contentDetails,status",
-      id: batch.map((b) => b.videoId).join(","),
-      maxResults: "50",
-    })) as {
-      items?: Array<{
-        id?: string
-        snippet?: { title?: string; thumbnails?: Record<string, { url?: string }> }
-        contentDetails?: { duration?: string }
-        status?: { embeddable?: boolean }
-      }>
-    }
-    for (const video of videoData.items ?? []) {
-      if (!video.id) continue
-      const durationSeconds = parseIsoDuration(video.contentDetails?.duration ?? "")
-      // Upcoming/live entries report 0s or P0D — treat them as unavailable
-      // rather than polluting runtime math with zero-length videos.
-      if (durationSeconds <= 0) continue
-      available.set(video.id, {
-        title: video.snippet?.title ?? "Untitled video",
-        durationSeconds,
-        thumbnailUrl: bestThumbnail(video.snippet?.thumbnails),
-        // A missing status must never mark a video unembeddable.
-        isEmbeddable: video.status?.embeddable !== false,
-      })
-    }
-  }
+  const { meta: available, apiCallCount: videoCalls } = await fetchVideoMetaMap(
+    items.map((i) => i.videoId),
+  )
+  apiCallCount += videoCalls
 
   const videos: FetchedVideo[] = []
   let unavailableCount = 0

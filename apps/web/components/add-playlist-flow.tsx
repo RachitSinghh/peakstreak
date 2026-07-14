@@ -159,8 +159,9 @@ export function AddPlaylistFlow({ initialUrl }: { initialUrl?: string }) {
           placeholder="Paste a YouTube playlist link…"
           aria-label="YouTube playlist URL"
           autoFocus
+          className="h-11 flex-1 text-base"
         />
-        <Button type="submit" disabled={loading || url.trim() === ""}>
+        <Button type="submit" size="lg" className="h-11" disabled={loading || url.trim() === ""}>
           {loading ? "Fetching…" : "Get estimate"}
         </Button>
       </form>

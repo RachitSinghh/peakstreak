@@ -112,7 +112,7 @@ export function LandingPaste() {
           aria-label="YouTube playlist URL"
           className="h-11 flex-1 text-base"
         />
-        <Button type="submit" size="lg" disabled={loading || url.trim() === ""}>
+        <Button type="submit" size="lg" className="h-11" disabled={loading || url.trim() === ""}>
           {loading ? "Working…" : "See how long"}
         </Button>
       </form>
