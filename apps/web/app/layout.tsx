@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
 
 import "@workspace/ui/globals.css"
 import { Toaster } from "@workspace/ui/components/sonner"
@@ -62,6 +63,7 @@ export default function RootLayout({
           {children}
           <Toaster />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   )
