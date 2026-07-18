@@ -47,12 +47,20 @@ export async function submitFeedbackAction(
   }
 
   const userId = await currentUserId()
-  await submitFeedback({
-    userId,
-    email: parsed.data.email,
-    message: parsed.data.message,
-    path: parsed.data.path ?? null,
-  })
+  try {
+    await submitFeedback({
+      userId,
+      email: parsed.data.email,
+      message: parsed.data.message,
+      path: parsed.data.path ?? null,
+    })
+  } catch (error) {
+    // The DB write is the source of truth; if it fails (e.g. a Neon cold-start
+    // timeout) don't 500 — return an error so the optimistic "Thanks" reverts
+    // to a retry prompt instead of falsely confirming a dropped submission.
+    console.error("[feedback] submission failed:", error)
+    return { error: "Couldn't send that just now — please try again in a moment." }
+  }
   track("feedback_submitted", { userId, properties: { hasEmail: Boolean(parsed.data.email) } })
 
   return { sent: true }

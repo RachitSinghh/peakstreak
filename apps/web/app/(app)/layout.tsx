@@ -6,6 +6,7 @@ import { Button } from "@workspace/ui/components/button"
 
 import { auth } from "@/lib/auth"
 import { UserMenu } from "@/components/user-menu"
+import { Wordmark } from "@/components/wordmark"
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -16,8 +17,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="border-border bg-background/80 sticky top-0 z-40 border-b backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="text-base font-semibold tracking-tight">
-              Peak<span className="text-primary">Streak</span>
+            <Link href="/dashboard">
+              <Wordmark className="text-sm" />
             </Link>
             <Link
               href="/leaderboard"

@@ -1,3 +1,5 @@
+import { after } from "next/server"
+
 import { sendEmail } from "@/lib/email/send"
 import { feedbackEmail } from "@/lib/email/templates"
 import { db, schema } from "@/lib/db"
@@ -26,16 +28,22 @@ export async function submitFeedback(input: FeedbackInput): Promise<void> {
   const to = env().FEEDBACK_EMAIL
   if (!to) return
 
-  try {
-    const message = feedbackEmail({
-      message: input.message,
-      fromEmail: input.email,
-      userId: input.userId,
-      path: input.path,
-    })
-    await sendEmail({ to, subject: message.subject, html: message.html, text: message.text })
-  } catch (error) {
-    // Stored already — don't fail the request just because the notify bounced.
-    console.error("[feedback] notification email failed:", error)
-  }
+  // The DB write above is the source of truth and stays on the request path.
+  // The notify email is slow (SMTP handshake) and non-critical, so send it
+  // after the response flushes. after() keeps it alive on serverless, unlike a
+  // bare floating promise the runtime could freeze once the response is sent.
+  after(async () => {
+    try {
+      const message = feedbackEmail({
+        message: input.message,
+        fromEmail: input.email,
+        userId: input.userId,
+        path: input.path,
+      })
+      await sendEmail({ to, subject: message.subject, html: message.html, text: message.text })
+    } catch (error) {
+      // Stored already — don't fail the request just because the notify bounced.
+      console.error("[feedback] notification email failed:", error)
+    }
+  })
 }

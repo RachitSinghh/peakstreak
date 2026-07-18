@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useActionState, useEffect, useRef } from "react"
+import { useActionState, useEffect, useOptimistic, useRef } from "react"
 import { CheckCircle2 } from "lucide-react"
 
 import { Alert, AlertDescription } from "@workspace/ui/components/alert"
@@ -23,7 +23,15 @@ export function FeedbackForm({
     submitFeedbackAction,
     {},
   )
+  // Flip to the thank-you the instant they submit, before the server responds.
+  // Resets automatically if the action returns an error (rate limit / invalid).
+  const [optimisticSent, markSent] = useOptimistic(false, () => true)
   const pathRef = useRef<HTMLInputElement>(null)
+
+  async function action(formData: FormData) {
+    markSent(true)
+    await formAction(formData)
+  }
 
   useEffect(() => {
     // The page they came from, for context — not the /feedback page itself.
@@ -38,7 +46,7 @@ export function FeedbackForm({
     }
   }, [])
 
-  if (state.sent) {
+  if ((optimisticSent || state.sent) && !state.error) {
     return (
       <div className="flex flex-col items-center gap-3 py-6 text-center">
         <CheckCircle2 className="text-success size-8" />
@@ -51,7 +59,7 @@ export function FeedbackForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="path" ref={pathRef} />
       <div className="flex flex-col gap-2">
         <Label htmlFor="message">What&apos;s on your mind?</Label>

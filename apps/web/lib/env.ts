@@ -1,5 +1,9 @@
 import { z } from "zod"
 
+// Env booleans arrive as strings; z.coerce.boolean() is a trap (any non-empty
+// string is true, so "false" → true). Accept only the literal "true"/"false".
+export const envBool = z.enum(["true", "false"]).transform((v) => v === "true")
+
 /**
  * Server-side environment configuration.
  *
@@ -17,8 +21,20 @@ const envSchema = z.object({
 
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  // Email provider toggle. USE_RESEND=false (default, until the Resend domain
+  // is verified) routes all mail through SMTP/nodemailer; flip to true once
+  // Resend is fully set up. Either way, if neither is configured we log to the
+  // console so the reminder loop stays testable in local dev.
+  USE_RESEND: envBool.default(false),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("PeakStreak <nudge@localhost>"),
+  // SMTP (nodemailer) — the interim transport while USE_RESEND=false. Port 587
+  // (STARTTLS) with SMTP_SECURE=false, or 465 with SMTP_SECURE=true.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: envBool.default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
   // Inbox that receives "Send feedback" submissions. Optional — without it,
   // feedback is still stored in the DB, just not emailed.
   FEEDBACK_EMAIL: z.string().email().optional(),

@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+import { Wordmark } from "@/components/wordmark"
+
 // Brand logos as inline SVGs — lucide-react dropped its brand/social icons, so
 // GitHub and X are hand-embedded here rather than imported.
 function GitHubIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -39,8 +41,8 @@ export function SiteFooter() {
         <div className="flex flex-col gap-10 sm:flex-row sm:justify-between">
           {/* Brand + social */}
           <div className="max-w-xs">
-            <Link href="/" className="text-base font-semibold tracking-tight">
-              Peak<span className="text-primary">Streak</span>
+            <Link href="/">
+              <Wordmark className="text-base" />
             </Link>
             <p className="text-muted-foreground mt-3 text-sm leading-6">
               Turn any YouTube playlist into a plan with a real finish date, a daily streak, and a

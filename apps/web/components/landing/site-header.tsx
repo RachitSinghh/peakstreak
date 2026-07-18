@@ -5,6 +5,8 @@ import { useEffect, useState } from "react"
 
 import { Button } from "@workspace/ui/components/button"
 
+import { Wordmark } from "@/components/wordmark"
+
 /**
  * Landing header. Transparent over the hero, then settles into a blurred,
  * bordered bar once the user scrolls past the fold. The entrance is a CSS
@@ -27,8 +29,8 @@ export function SiteHeader() {
       className="ps-header-in data-[stuck=true]:border-border data-[stuck=true]:bg-background/70 fixed inset-x-0 top-0 z-50 border-b border-transparent transition-colors duration-300 data-[stuck=true]:backdrop-blur-xl"
     >
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-        <Link href="/dashboard" className="text-base font-semibold tracking-tight">
-          Peak<span className="text-primary">Streak</span>
+        <Link href="/dashboard">
+          <Wordmark className="text-base" />
         </Link>
         <div className="flex items-center gap-2">
           <Button variant="ghost" render={<Link href="/login" />}>
