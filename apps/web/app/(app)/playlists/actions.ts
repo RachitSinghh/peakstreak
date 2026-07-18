@@ -272,6 +272,73 @@ export async function addVideosToCustomPlaylist(
   redirect("/dashboard")
 }
 
+const reorderSchema = z.object({
+  enrollmentId: z.string().min(1),
+  videoIds: z.array(z.string().min(1)).min(1),
+})
+
+/**
+ * Renumber the videos of a custom playlist to the given order (PS-18 follow-up).
+ * `videoIds` must be exactly the playlist's current videos, in the new order.
+ * The (playlist_id, position) unique index forbids in-place swaps, so we first
+ * bump every row far out of range, then assign 0..n-1.
+ */
+export async function reorderCustomPlaylistVideos(
+  input: z.infer<typeof reorderSchema>,
+): Promise<EnrollState> {
+  const userId = await requireUserId()
+
+  const parsed = reorderSchema.safeParse(input)
+  if (!parsed.success) return { error: "Invalid input." }
+  const { enrollmentId, videoIds } = parsed.data
+
+  const enrollment = await requireEnrollment(userId, enrollmentId)
+  if (!enrollment) return { error: "Playlist not found." }
+
+  const playlist = await db.query.playlists.findFirst({
+    where: eq(schema.playlists.id, enrollment.playlistId),
+  })
+  if (!playlist) return { error: "Playlist not found." }
+  if (playlist.youtubePlaylistId !== null) {
+    return { error: "You can only reorder a custom playlist." }
+  }
+
+  const playlistId = playlist.id
+  const existing = await db
+    .select({ videoId: schema.playlistVideos.videoId })
+    .from(schema.playlistVideos)
+    .where(eq(schema.playlistVideos.playlistId, playlistId))
+
+  // The new order must be a permutation of exactly the current videos — else a
+  // stale client could drop or duplicate rows.
+  const current = new Set(existing.map((e) => e.videoId))
+  const next = new Set(videoIds)
+  if (next.size !== videoIds.length || next.size !== current.size) {
+    return { error: "Playlist changed — refresh and try again." }
+  }
+  for (const id of videoIds) {
+    if (!current.has(id)) return { error: "Playlist changed — refresh and try again." }
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`update playlist_videos set position = position + 1000000 where playlist_id = ${playlistId}`,
+    )
+    for (let i = 0; i < videoIds.length; i++) {
+      await tx.execute(
+        sql`update playlist_videos set position = ${i} where playlist_id = ${playlistId} and video_id = ${videoIds[i]}`,
+      )
+    }
+    await tx
+      .update(schema.playlists)
+      .set({ updatedAt: new Date() })
+      .where(eq(schema.playlists.id, playlistId))
+  })
+
+  revalidatePath("/dashboard")
+  return {}
+}
+
 /** Soft delete: hides the playlist but keeps every progress row. */
 export async function archivePlaylist(enrollmentId: string) {
   const userId = await requireUserId()

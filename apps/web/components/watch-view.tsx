@@ -5,13 +5,14 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { ArrowLeft, Check, CheckCircle2, Circle, ExternalLink, ListPlus, ListVideo } from "lucide-react"
+import { ArrowLeft, Check, CheckCircle2, ExternalLink, ListPlus, ListVideo } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button, buttonVariants } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { NotesPanel } from "@/components/notes-panel"
+import { UpNextList } from "@/components/up-next-list"
 import { formatDuration } from "@/lib/pace"
 
 /* ── YouTube IFrame Player API (official embed only, per ToS) ── */
@@ -615,41 +616,13 @@ export function WatchView({
             <ListVideo className="size-4" />
             Up next
           </div>
-          <ol className="max-h-[70vh] overflow-y-auto pb-2">
-            {videos.map((video) => {
-              const done = completedIds.has(video.id)
-              const isCurrent = video.id === currentVideoId
-              return (
-                <li key={video.id}>
-                  <Link
-                    href={`/playlists/${enrollmentId}/watch/${video.id}`}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-2 text-sm transition-colors",
-                      isCurrent ? "bg-secondary" : "hover:bg-secondary/60",
-                    )}
-                  >
-                    {done ? (
-                      <CheckCircle2 className="text-success size-4 shrink-0" />
-                    ) : (
-                      <Circle className="text-muted-foreground size-4 shrink-0" />
-                    )}
-                    <span
-                      className={cn(
-                        "min-w-0 flex-1 truncate",
-                        isCurrent ? "text-foreground font-medium" : "text-muted-foreground",
-                        done && !isCurrent && "line-through opacity-70",
-                      )}
-                    >
-                      {video.position + 1}. {video.title}
-                    </span>
-                    <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                      {formatDuration(video.durationSeconds)}
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ol>
+          <UpNextList
+            videos={videos}
+            enrollmentId={enrollmentId}
+            currentVideoId={currentVideoId}
+            completedIds={completedIds}
+            isCustom={isCustom}
+          />
           {isCustom && (
             <Link
               href={`/playlists/${enrollmentId}/add`}
