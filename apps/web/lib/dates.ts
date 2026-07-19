@@ -20,14 +20,18 @@ export function localDateString(instant: Date, timeZone: string): string {
 
 /** The user's local hour (0-23) for a given instant — reminder windowing. */
 export function localHour(instant: Date, timeZone: string): number {
-  return Number(
+  // `hour12: false` conflicts with `hourCycle` and overrides it — on some ICU
+  // builds it resolves to a 1–24 cycle, so midnight formats as "24" (seen on
+  // the CI runner but not locally). Use only hourCycle "h23", and normalize
+  // with % 24 as a belt-and-suspenders guard against that ICU quirk.
+  const hour = Number(
     new Intl.DateTimeFormat("en-US", {
       timeZone,
       hour: "numeric",
-      hour12: false,
       hourCycle: "h23",
     }).format(instant),
   )
+  return hour % 24
 }
 
 function toUtcMs(dateStr: string): number {
