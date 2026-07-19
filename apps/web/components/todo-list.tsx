@@ -3,7 +3,8 @@
 // FT-PM3 (todo CRUD + estimates + reorder), FT-PM4 (video-length estimate),
 // FT-PM5 (start a Pomodoro schedule from a task).
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import {
   CheckCircle2,
   Circle,
@@ -12,6 +13,8 @@ import {
   Loader2,
   Pencil,
   Play,
+  Search,
+  SquarePlay,
   Trash2,
   Film,
 } from "lucide-react"
@@ -47,7 +50,7 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 
-import type { Todo } from "@/lib/todos"
+import type { EnrollablePlaylist, Todo } from "@/lib/todos"
 import { usePomodoro } from "@/hooks/use-pomodoro"
 import { cyclesForTask } from "@/lib/pomodoro"
 
@@ -80,6 +83,8 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     estimatedDurationMinutes: number
     sourceType: "manual" | "video"
     sourceUrl?: string
+    videoId?: string
+    enrollmentId?: string
   }) {
     const res = await fetch("/api/todos", {
       method: "POST",
@@ -297,6 +302,27 @@ function TodoRow({
         <span className="text-muted-foreground shrink-0 font-mono text-xs">
           {fmtEstimate(todo.estimatedDurationMinutes)}
         </span>
+        {todo.videoId && todo.enrollmentId ? (
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            render={<Link href={`/playlists/${todo.enrollmentId}/watch/${todo.videoId}`} />}
+            aria-label="Watch this video"
+            title="Watch"
+          >
+            <SquarePlay className="size-4" />
+          </Button>
+        ) : todo.sourceType === "video" && todo.sourceUrl ? (
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            render={<a href={todo.sourceUrl} target="_blank" rel="noopener noreferrer" />}
+            aria-label="Open video"
+            title="Open video"
+          >
+            <SquarePlay className="size-4" />
+          </Button>
+        ) : null}
         {!todo.completed && (
           <Button
             size="icon-sm"
@@ -333,48 +359,20 @@ function TodoRow({
 }
 
 // FT-PM4 lives here: the "from video" toggle prefills the estimate.
-function AddBar({
-  onAdd,
-}: {
-  onAdd: (input: {
-    title: string
-    estimatedDurationMinutes: number
-    sourceType: "manual" | "video"
-    sourceUrl?: string
-  }) => Promise<void>
-}) {
+type AddInput = {
+  title: string
+  estimatedDurationMinutes: number
+  sourceType: "manual" | "video"
+  sourceUrl?: string
+  videoId?: string
+  enrollmentId?: string
+}
+
+function AddBar({ onAdd }: { onAdd: (input: AddInput) => Promise<void> }) {
   const [title, setTitle] = useState("")
   const [minutes, setMinutes] = useState("")
-  const [videoMode, setVideoMode] = useState(false)
-  const [url, setUrl] = useState("")
-  const [fetching, setFetching] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-
-  async function lookupDuration() {
-    if (!url.trim()) return
-    setFetching(true)
-    try {
-      const res = await fetch("/api/todos/video-duration", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(
-          data.error === "unsupported_url"
-            ? "Couldn't read that URL — enter minutes manually"
-            : "Couldn't fetch video length — enter minutes manually",
-        )
-        return
-      }
-      setMinutes(String(data.minutes))
-      if (!title.trim() && data.title) setTitle(data.title)
-      toast.success(`Detected ${data.minutes} min`)
-    } finally {
-      setFetching(false)
-    }
-  }
 
   async function submit() {
     const t = title.trim()
@@ -386,13 +384,10 @@ function AddBar({
     await onAdd({
       title: t,
       estimatedDurationMinutes: Math.max(0, Math.min(1440, Math.round(Number(minutes) || 0))),
-      sourceType: videoMode && url.trim() ? "video" : "manual",
-      sourceUrl: videoMode && url.trim() ? url.trim() : undefined,
+      sourceType: "manual",
     })
     setTitle("")
     setMinutes("")
-    setUrl("")
-    setVideoMode(false)
     setBusy(false)
   }
 
@@ -403,7 +398,7 @@ function AddBar({
           placeholder="What are you working on?"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !videoMode && submit()}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
           className="min-w-40 flex-1"
         />
         <Input
@@ -418,32 +413,195 @@ function AddBar({
         />
         <Button
           size="sm"
-          variant={videoMode ? "secondary" : "ghost"}
-          onClick={() => setVideoMode((v) => !v)}
-          aria-pressed={videoMode}
-          title="Estimate from a YouTube video"
+          variant="ghost"
+          onClick={() => setPickerOpen(true)}
+          title="Add a video you're already studying"
         >
-          <Film className="size-4" /> Video
+          <Film className="size-4" /> From a video
         </Button>
         <Button size="sm" onClick={submit} disabled={busy}>
           Add
         </Button>
       </div>
-      {videoMode && (
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Paste a YouTube URL"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="flex-1"
-          />
-          <Button size="sm" variant="outline" onClick={lookupDuration} disabled={fetching}>
-            {fetching ? <Loader2 className="size-4 animate-spin" /> : null}
-            Detect length
-          </Button>
-        </div>
+      {pickerOpen && (
+        <VideoPickerDialog
+          onClose={() => setPickerOpen(false)}
+          onPick={async (input) => {
+            await onAdd(input)
+            setPickerOpen(false)
+          }}
+        />
       )}
     </div>
+  )
+}
+
+// Pick a video already in the user's playlists (durations known → no API
+// call) or, as a fallback, paste any YouTube URL. Either way it becomes a
+// task with a pre-filled estimate.
+function VideoPickerDialog({
+  onClose,
+  onPick,
+}: {
+  onClose: () => void
+  onPick: (input: AddInput) => Promise<void>
+}) {
+  const [playlists, setPlaylists] = useState<EnrollablePlaylist[] | null>(null)
+  const [query, setQuery] = useState("")
+  const [urlMode, setUrlMode] = useState(false)
+  const [url, setUrl] = useState("")
+  const [fetching, setFetching] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/todos/videos")
+      .then((r) => (r.ok ? r.json() : { playlists: [] }))
+      .then((d: { playlists: EnrollablePlaylist[] }) => {
+        if (!cancelled) setPlaylists(d.playlists)
+      })
+      .catch(() => {
+        if (!cancelled) setPlaylists([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const q = query.trim().toLowerCase()
+  const filtered =
+    playlists?.map((p) => ({
+      ...p,
+      videos: q ? p.videos.filter((v) => v.title.toLowerCase().includes(q)) : p.videos,
+    })) ?? []
+  const hasResults = filtered.some((p) => p.videos.length > 0)
+
+  async function pickExisting(p: EnrollablePlaylist, v: EnrollablePlaylist["videos"][number]) {
+    await onPick({
+      title: v.title,
+      estimatedDurationMinutes: Math.max(1, Math.round(v.durationSeconds / 60)),
+      sourceType: "video",
+      videoId: v.videoId,
+      enrollmentId: p.enrollmentId,
+    })
+  }
+
+  async function pickFromUrl() {
+    if (!url.trim()) return
+    setFetching(true)
+    try {
+      const res = await fetch("/api/todos/video-duration", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(
+          data.error === "unsupported_url"
+            ? "Couldn't read that URL"
+            : "Couldn't fetch that video's length",
+        )
+        return
+      }
+      await onPick({
+        title: data.title || "Video",
+        estimatedDurationMinutes: data.minutes,
+        sourceType: "video",
+        sourceUrl: url.trim(),
+      })
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{urlMode ? "Add a video by URL" : "Add from your videos"}</DialogTitle>
+        </DialogHeader>
+
+        {urlMode ? (
+          <div className="flex flex-col gap-3">
+            <Input
+              placeholder="Paste a YouTube URL"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && pickFromUrl()}
+              autoFocus
+            />
+            <div className="flex items-center justify-between">
+              <Button size="sm" variant="ghost" onClick={() => setUrlMode(false)}>
+                ← Back to my videos
+              </Button>
+              <Button size="sm" onClick={pickFromUrl} disabled={fetching}>
+                {fetching ? <Loader2 className="size-4 animate-spin" /> : null}
+                Add task
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="relative">
+              <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+              <Input
+                placeholder="Search your videos"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+
+            <div className="max-h-[50vh] overflow-y-auto">
+              {playlists === null ? (
+                <p className="text-muted-foreground flex items-center gap-2 px-1 py-6 text-sm">
+                  <Loader2 className="size-4 animate-spin" /> Loading your videos…
+                </p>
+              ) : !hasResults ? (
+                <p className="text-muted-foreground px-1 py-6 text-center text-sm">
+                  {playlists.length === 0
+                    ? "No videos in your playlists yet."
+                    : "No videos match your search."}
+                </p>
+              ) : (
+                filtered
+                  .filter((p) => p.videos.length > 0)
+                  .map((p) => (
+                    <div key={p.enrollmentId} className="mb-3">
+                      <p className="text-muted-foreground mb-1 px-1 text-xs font-medium tracking-wide uppercase">
+                        {p.playlistTitle}
+                      </p>
+                      <ul className="flex flex-col">
+                        {p.videos.map((v) => (
+                          <li key={v.videoId}>
+                            <button
+                              onClick={() => pickExisting(p, v)}
+                              className="hover:bg-muted flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
+                            >
+                              <Film className="text-muted-foreground size-3.5 shrink-0" />
+                              <span className="min-w-0 flex-1 truncate">{v.title}</span>
+                              <span className="text-muted-foreground shrink-0 font-mono text-xs">
+                                {Math.max(1, Math.round(v.durationSeconds / 60))}m
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <button
+              onClick={() => setUrlMode(true)}
+              className="text-muted-foreground hover:text-foreground self-start text-xs underline underline-offset-2"
+            >
+              Not in your library? Paste a URL instead
+            </button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 

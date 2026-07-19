@@ -370,9 +370,20 @@ export const todos = pgTable(
     completedAt: timestamp("completed_at", { withTimezone: true }),
     sourceType: text("source_type", { enum: ["manual", "video"] }).notNull().default("manual"),
     sourceUrl: text("source_url"),
+    // When the task was created from a video already in the user's library,
+    // these link it back. videoId powers the "in your tasks" badge on the
+    // watch page (matches the video across any playlist); enrollmentId builds
+    // the in-app watch link from the task. Both null for manual/URL tasks.
+    videoId: uuid("video_id").references(() => videos.id, { onDelete: "set null" }),
+    enrollmentId: uuid("enrollment_id").references(() => userPlaylists.id, {
+      onDelete: "set null",
+    }),
     // Manual sort order (drag-and-drop). Lower = higher in the list.
     position: integer("position").notNull().default(0),
     ...timestamps,
   },
-  (t) => [index("todos_user_position_idx").on(t.userId, t.completed, t.position)],
+  (t) => [
+    index("todos_user_position_idx").on(t.userId, t.completed, t.position),
+    index("todos_user_video_idx").on(t.userId, t.videoId),
+  ],
 )

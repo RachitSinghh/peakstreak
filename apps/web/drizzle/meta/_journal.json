@@ -64,6 +64,13 @@
       "when": 1784457018273,
       "tag": "0008_odd_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784459094212,
+      "tag": "0009_hard_psylocke",
+      "breakpoints": true
     }
   ]
 }
