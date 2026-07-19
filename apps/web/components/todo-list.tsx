@@ -516,13 +516,13 @@ function VideoPickerDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="w-[calc(100%-2rem)] min-w-0 sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{urlMode ? "Add a video by URL" : "Add from your videos"}</DialogTitle>
         </DialogHeader>
 
         {urlMode ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-3">
             <Input
               placeholder="Paste a YouTube URL"
               value={url}
@@ -541,7 +541,7 @@ function VideoPickerDialog({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-3">
             <div className="relative">
               <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
               <Input
@@ -552,7 +552,7 @@ function VideoPickerDialog({
               />
             </div>
 
-            <div className="max-h-[50vh] overflow-y-auto">
+            <div className="max-h-[50vh] min-w-0 overflow-y-auto">
               {playlists === null ? (
                 <p className="text-muted-foreground flex items-center gap-2 px-1 py-6 text-sm">
                   <Loader2 className="size-4 animate-spin" /> Loading your videos…
