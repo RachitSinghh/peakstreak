@@ -6,6 +6,7 @@ import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 
 import { track } from "@/lib/analytics"
+import { clearPresence } from "@/lib/presence"
 import { db, schema } from "@/lib/db"
 import { env, googleOAuthEnabled } from "@/lib/env"
 import { ensureUserDefaults } from "@/lib/user"
@@ -80,6 +81,12 @@ const nextAuth = NextAuth({
         await ensureUserDefaults(user.id)
         track("signup", { userId: user.id, properties: { method: "google" } })
       }
+    },
+    // FT-S1: drop presence right away on logout instead of waiting for the
+    // 45s TTL to lapse.
+    async signOut(message) {
+      const userId = "token" in message ? message.token?.sub : undefined
+      if (userId) await clearPresence(userId)
     },
   },
 })

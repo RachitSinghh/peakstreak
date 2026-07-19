@@ -50,6 +50,20 @@
       "when": 1783978802953,
       "tag": "0006_sour_spirit",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784456252718,
+      "tag": "0007_worried_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784457018273,
+      "tag": "0008_odd_nova",
+      "breakpoints": true
     }
   ]
 }
