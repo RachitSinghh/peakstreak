@@ -14,6 +14,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import { NotesPanel } from "@/components/notes-panel"
 import { UpNextList } from "@/components/up-next-list"
 import { formatDuration } from "@/lib/pace"
+import { setStudying } from "@/lib/study-signal"
 
 /* ── YouTube IFrame Player API (official embed only, per ToS) ── */
 
@@ -257,7 +258,10 @@ export function WatchView({
         tickTimer = setInterval(() => {
           const player = playerRef.current
           if (!player || typeof player.getPlayerState !== "function") return
-          if (player.getPlayerState() !== window.YT!.PlayerState.PLAYING) return
+          const playing = player.getPlayerState() === window.YT!.PlayerState.PLAYING
+          // FT-S1: watching a playing video counts as studying.
+          setStudying("watch", playing)
+          if (!playing) return
 
           const rate = player.getPlaybackRate?.() || 1
           pendingRef.current += 1 * rate
@@ -282,6 +286,7 @@ export function WatchView({
     return () => {
       cancelled = true
       if (tickTimer) clearInterval(tickTimer)
+      setStudying("watch", false)
       document.removeEventListener("visibilitychange", onHide)
       window.removeEventListener("pagehide", onPageHide)
       void sendHeartbeat(true)
@@ -326,9 +331,12 @@ export function WatchView({
         void sendHeartbeat()
       }
     }
+    // FT-S1: an active YouTube-popup session also counts as studying.
+    setStudying("watch", true)
     const timer = setInterval(tick, 1000)
     return () => {
       clearInterval(timer)
+      setStudying("watch", false)
       void sendHeartbeat(true)
     }
   }, [popupState, current.durationSeconds, sendHeartbeat])

@@ -17,7 +17,9 @@ import { env } from "@/lib/env"
 
 let redis: Redis | null = null
 
-function getRedis(): Redis | null {
+// Shared Upstash client. Exported so presence (FT-S1) reuses the same
+// singleton instead of opening a second connection.
+export function getRedis(): Redis | null {
   const { UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN } = env()
   if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) return null
   redis ??= new Redis({ url: UPSTASH_REDIS_REST_URL, token: UPSTASH_REDIS_REST_TOKEN })

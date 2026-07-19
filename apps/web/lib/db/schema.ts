@@ -218,6 +218,10 @@ export const dailyActivity = pgTable(
     activityDate: date("activity_date").notNull(),
     videosCompleted: integer("videos_completed").notNull().default(0),
     secondsWatched: integer("seconds_watched").notNull().default(0),
+    // FT-S2: Pomodoro focus seconds. Kept separate from secondsWatched so the
+    // watch-time stats (leaderboard, heatmap) stay pure; "active learning
+    // time" = secondsWatched + focusSeconds.
+    focusSeconds: integer("focus_seconds").notNull().default(0),
     // A streak-freeze day: no activity, but the streak survived through it.
     isFrozen: boolean("is_frozen").notNull().default(false),
     ...timestamps,
@@ -345,4 +349,30 @@ export const feedback = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("feedback_created_idx").on(t.createdAt.desc())],
+)
+
+// ── Todos (FT-PM3) ──────────────────────────────────────────────
+// Each task carries a manual/auto time estimate used to auto-configure a
+// Pomodoro schedule (FT-PM5). source_type marks where the estimate came
+// from ('video' tasks prefill from the YouTube duration — FT-PM4).
+
+export const todos = pgTable(
+  "todos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    estimatedDurationMinutes: integer("estimated_duration_minutes").notNull().default(0),
+    completed: boolean("completed").notNull().default(false),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    sourceType: text("source_type", { enum: ["manual", "video"] }).notNull().default("manual"),
+    sourceUrl: text("source_url"),
+    // Manual sort order (drag-and-drop). Lower = higher in the list.
+    position: integer("position").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [index("todos_user_position_idx").on(t.userId, t.completed, t.position)],
 )
