@@ -9,6 +9,10 @@ const PUBLIC_PAGES = new Set([
   "/reset-password",
   "/feedback",
   "/privacy",
+  // Next's generated social-share image (file convention, no dot in its URL so
+  // the matcher below doesn't skip it). Must stay public or link crawlers
+  // (WhatsApp, X) get redirected to /login and show no preview image.
+  "/opengraph-image",
 ])
 
 // Public sections matched by prefix (the page itself + any sub-paths), e.g. the
