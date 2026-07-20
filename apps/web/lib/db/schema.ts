@@ -33,6 +33,9 @@ export const users = pgTable("users", {
   // IANA zone. Defines the user's day boundary for streaks and reminders.
   timezone: text("timezone").notNull().default("Asia/Kolkata"),
   onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+  // Access role. "admin" unlocks /admin (personal launch dashboard). Everyone
+  // is "user"; promote an account with: update users set role='admin' where email=…
+  role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
   // Community leaderboard: opt-out (visible by default), shown by a chosen
   // display name only — never the email. Null displayName falls back to the
   // first name, then an anonymous "Learner #…" label.
@@ -346,6 +349,10 @@ export const feedback = pgTable(
     message: text("message").notNull(),
     // The path the user was on when they submitted, for context.
     path: text("path"),
+    // Admin can approve a submission to show as a testimonial on the landing
+    // page. approvedAt records when (null = not approved).
+    approvedAsTestimonial: boolean("approved_as_testimonial").notNull().default(false),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("feedback_created_idx").on(t.createdAt.desc())],

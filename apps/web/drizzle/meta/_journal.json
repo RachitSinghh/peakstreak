@@ -71,6 +71,20 @@
       "when": 1784459094212,
       "tag": "0009_hard_psylocke",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784526589364,
+      "tag": "0010_curvy_guardsmen",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784530311762,
+      "tag": "0011_long_ultimates",
+      "breakpoints": true
     }
   ]
 }

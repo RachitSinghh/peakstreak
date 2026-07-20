@@ -1,6 +1,7 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
 import bcrypt from "bcryptjs"
 import { eq } from "drizzle-orm"
+import { notFound } from "next/navigation"
 import NextAuth, { type NextAuthResult } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
@@ -119,5 +120,21 @@ export async function currentUserId(): Promise<string | null> {
 export async function requireUserId(): Promise<string> {
   const id = await currentUserId()
   if (!id) throw new Error("Unauthenticated")
+  return id
+}
+
+/**
+ * The signed-in user's id, but only if their `role` is "admin"; otherwise
+ * renders a 404 so the admin surface stays invisible to normal users. Reads
+ * the role fresh from the DB (it isn't in the JWT), which is fine on the rare
+ * admin routes. Promote an account with: update users set role='admin' where …
+ */
+export async function requireAdmin(): Promise<string> {
+  const id = await requireUserId()
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.id, id),
+    columns: { role: true },
+  })
+  if (user?.role !== "admin") notFound()
   return id
 }
