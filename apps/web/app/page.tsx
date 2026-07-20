@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
 import { StreakBand } from "@/components/landing/streak-band"
+import { Testimonials } from "@/components/landing/testimonials"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
@@ -49,6 +50,7 @@ export default function LandingPage() {
         <Hero />
         <Features />
         <StreakBand />
+        <Testimonials />
 
         {/* closing CTA */}
         <section className="mx-auto max-w-5xl px-4 pb-28 text-center">
