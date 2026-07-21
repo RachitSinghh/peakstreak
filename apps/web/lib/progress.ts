@@ -237,12 +237,8 @@ export async function uncompleteVideo(input: {
 export interface EtaInput {
   remainingSeconds: number
   remainingVideos: number
-  completedSeconds: number
-  completedVideos: number
   pace: Pace
   playbackSpeed: number
-  /** Local date the enrollment started (user timezone). */
-  startDate: string
   /** Local date today (user timezone). */
   today: string
   targetFinishDate?: string | null
@@ -251,61 +247,24 @@ export interface EtaInput {
 export interface Eta {
   projectedFinishDate: string
   daysRemaining: number
-  /** Positive = ahead of the original plan, negative = behind. Null without a target. */
+  /** Positive = ahead of the original target, negative = behind. Null without a target. */
   aheadDays: number | null
-  /** Whether the projection uses observed pace or the chosen plan. */
-  source: "actual" | "planned"
 }
 
 /**
- * Recomputes the finish date. With completion history, projects from the
- * user's *observed* pace (what they actually do beats what they promised);
- * with no history yet, falls back to the chosen plan.
+ * Projects the finish date at the user's chosen pace, then reports whether
+ * that lands ahead of or behind the original target. Idle days push the
+ * projection later (behind); being further along than planned pulls it earlier.
+ * Observed pace is deliberately NOT used — dividing by elapsed calendar days
+ * made one completion after a gap project years out.
  */
 export function computeEta(input: EtaInput): Eta {
-  const finished = input.remainingVideos <= 0
-
-  if (finished) {
-    return {
-      projectedFinishDate: input.today,
-      daysRemaining: 0,
-      aheadDays: input.targetFinishDate ? daysBetween(input.today, input.targetFinishDate) : null,
-      source: "actual",
-    }
-  }
-
-  let daysRemaining: number
-  let source: Eta["source"]
-
-  if (input.completedVideos > 0) {
-    source = "actual"
-    // Observed daily rate since the start (inclusive day count ≥ 1).
-    const daysElapsed = Math.max(1, daysBetween(input.startDate, input.today) + 1)
-    if (input.pace.type === "videos_per_day") {
-      const videosPerDay = input.completedVideos / daysElapsed
-      daysRemaining = Math.ceil(input.remainingVideos / videosPerDay)
-    } else {
-      const secondsPerDay = input.completedSeconds / daysElapsed
-      daysRemaining =
-        secondsPerDay > 0
-          ? Math.ceil(input.remainingSeconds / secondsPerDay)
-          : estimateDays({
-              remainingSeconds: input.remainingSeconds,
-              remainingVideos: input.remainingVideos,
-              pace: input.pace,
-              playbackSpeed: input.playbackSpeed,
-            })
-    }
-  } else {
-    source = "planned"
-    daysRemaining = estimateDays({
-      remainingSeconds: input.remainingSeconds,
-      remainingVideos: input.remainingVideos,
-      pace: input.pace,
-      playbackSpeed: input.playbackSpeed,
-    })
-  }
-
+  const daysRemaining = estimateDays({
+    remainingSeconds: input.remainingSeconds,
+    remainingVideos: input.remainingVideos,
+    pace: input.pace,
+    playbackSpeed: input.playbackSpeed,
+  })
   const projectedFinishDate = addDays(input.today, daysRemaining)
   return {
     projectedFinishDate,
@@ -313,7 +272,6 @@ export function computeEta(input: EtaInput): Eta {
     aheadDays: input.targetFinishDate
       ? daysBetween(projectedFinishDate, input.targetFinishDate)
       : null,
-    source,
   }
 }
 

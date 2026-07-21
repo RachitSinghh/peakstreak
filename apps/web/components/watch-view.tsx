@@ -109,8 +109,11 @@ export function WatchView({
   const [playlistDone, setPlaylistDone] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  // Displayed watch progress — refreshed by heartbeat responses.
+  // Cumulative watch time (seek-proof) — drives the 80% completion rule.
   const [watchedSeconds, setWatchedSeconds] = useState(initialSecondsWatched)
+  // Furthest point reached — drives the displayed % so the bar tracks the
+  // playhead, not replayed seconds. Monotonic server-side (never drops).
+  const [furthestSeconds, setFurthestSeconds] = useState(resumePositionSeconds)
 
   const playerRef = useRef<YTPlayer | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -195,11 +198,13 @@ export function WatchView({
         if (res.ok) {
           const data = (await res.json()) as {
             secondsWatched: number
+            furthestPositionSeconds: number
             autoCompleted: boolean
             firstCompletionToday: boolean
             playlistCompleted: boolean
           }
           setWatchedSeconds(data.secondsWatched)
+          setFurthestSeconds(data.furthestPositionSeconds)
           watchedRef.current = data.secondsWatched
           if (data.autoCompleted && !completedRef.current) markCompleted(data)
         }
@@ -403,9 +408,11 @@ export function WatchView({
   }
 
   const completedCount = completedIds.size
+  // Progress = how far into the video, not replayed seconds — so the bar
+  // matches the playhead. Completion still keys off cumulative watchedSeconds.
   const watchedPct = Math.min(
     100,
-    Math.round((watchedSeconds / Math.max(1, current.durationSeconds)) * 100),
+    Math.round((furthestSeconds / Math.max(1, current.durationSeconds)) * 100),
   )
 
   return (

@@ -36,10 +36,11 @@ function toCardProps(e: DashboardEnrollment) {
 
 export default async function DashboardPage() {
   const userId = await requireUserId()
-  const { active, completed, archived, streak, activityDays, today } =
+  const { active, completed, streak, activityDays, today } =
     await getDashboard(userId)
 
-  const isEmpty = active.length === 0 && completed.length === 0 && archived.length === 0
+  // Archived playlists live on their own page, so they don't count here.
+  const isEmpty = active.length === 0 && completed.length === 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -96,18 +97,6 @@ export default async function DashboardPage() {
             </section>
           )}
 
-          {archived.length > 0 && (
-            <section>
-              <FadeUp delay={0.24}>
-                <h2 className="text-muted-foreground mb-3 text-sm font-medium">Archived</h2>
-              </FadeUp>
-              <div className="grid grid-cols-1 gap-4 opacity-70 sm:grid-cols-2 lg:grid-cols-3">
-                {archived.map((e, i) => (
-                  <PlaylistCard key={e.id} index={i} {...toCardProps(e)} />
-                ))}
-              </div>
-            </section>
-          )}
         </>
       )}
     </div>
