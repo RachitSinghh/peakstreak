@@ -74,11 +74,8 @@ export async function getDashboard(userId: string, now: Date = new Date()): Prom
     const eta = computeEta({
       remainingSeconds,
       remainingVideos,
-      completedSeconds: row.completedSeconds,
-      completedVideos: row.completedCount,
       pace: { type: row.enrollment.paceType, value: row.enrollment.paceValue },
       playbackSpeed: Number(row.enrollment.playbackSpeed),
-      startDate: localDateString(row.enrollment.startedAt, user.timezone),
       today,
       targetFinishDate: row.enrollment.targetFinishDate,
     })

@@ -100,13 +100,13 @@ export function PlaylistCard(props: PlaylistCardProps) {
             <DropdownMenuContent align="end">
               {props.status === "archived" ? (
                 <DropdownMenuItem
-                  onSelect={() => startTransition(() => restorePlaylist(props.id))}
+                  onClick={() => startTransition(() => restorePlaylist(props.id))}
                 >
                   <ArchiveRestore className="size-4" />
                   Restore
                 </DropdownMenuItem>
               ) : (
-                <DropdownMenuItem onSelect={() => startTransition(() => archivePlaylist(props.id))}>
+                <DropdownMenuItem onClick={() => startTransition(() => archivePlaylist(props.id))}>
                   <Archive className="size-4" />
                   Archive
                 </DropdownMenuItem>

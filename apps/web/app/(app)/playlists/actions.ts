@@ -349,10 +349,10 @@ export async function archivePlaylist(enrollmentId: string) {
       and(
         eq(schema.userPlaylists.id, enrollmentId),
         eq(schema.userPlaylists.userId, userId),
-        eq(schema.userPlaylists.status, "active"),
       ),
     )
   revalidatePath("/dashboard")
+  revalidatePath("/archived")
 }
 
 export async function restorePlaylist(enrollmentId: string) {
@@ -368,4 +368,5 @@ export async function restorePlaylist(enrollmentId: string) {
       ),
     )
   revalidatePath("/dashboard")
+  revalidatePath("/archived")
 }

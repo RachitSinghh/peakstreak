@@ -257,54 +257,32 @@ describe("computeEta (pure)", () => {
   const base = {
     remainingSeconds: 5 * 3600,
     remainingVideos: 10,
-    completedSeconds: 0,
-    completedVideos: 0,
     playbackSpeed: 1,
-    startDate: "2026-07-01",
     today: "2026-07-05",
     targetFinishDate: "2026-07-15",
   }
 
-  it("falls back to the chosen pace with no history", () => {
+  it("projects at the chosen minutes-per-day pace", () => {
+    // 5h remaining at 60 min/day → 5 days
     const eta = computeEta({ ...base, pace: { type: "minutes_per_day", value: 60 } })
-    expect(eta.source).toBe("planned")
     expect(eta.daysRemaining).toBe(5)
     expect(eta.projectedFinishDate).toBe("2026-07-10")
     expect(eta.aheadDays).toBe(5) // projected Jul 10 vs target Jul 15
   })
 
-  it("projects from observed video rate when history exists", () => {
-    // 5 days elapsed, 10 done → 2/day; 10 remaining → 5 days
-    const eta = computeEta({
-      ...base,
-      completedVideos: 10,
-      completedSeconds: 10 * 600,
-      pace: { type: "videos_per_day", value: 1 },
-    })
-    expect(eta.source).toBe("actual")
+  it("projects at the chosen videos-per-day pace", () => {
+    // 10 remaining at 2/day → 5 days
+    const eta = computeEta({ ...base, pace: { type: "videos_per_day", value: 2 } })
     expect(eta.daysRemaining).toBe(5)
     expect(eta.projectedFinishDate).toBe("2026-07-10")
   })
 
-  it("projects from observed watch-time rate for time-based pace", () => {
-    // 5 days elapsed, 5h watched → 1h/day; 5h remaining → 5 days
+  it("reports behind-schedule as negative aheadDays when work outlasts the target", () => {
+    // 15h remaining at 60 min/day → 15 days → Jul 20, past the Jul 15 target
     const eta = computeEta({
       ...base,
-      completedVideos: 5,
-      completedSeconds: 5 * 3600,
-      pace: { type: "minutes_per_day", value: 30 },
-    })
-    expect(eta.source).toBe("actual")
-    expect(eta.daysRemaining).toBe(5)
-  })
-
-  it("reports behind-schedule as negative aheadDays", () => {
-    // 1 video in 5 days → 0.2/day; 10 remaining → 50 days → way past target
-    const eta = computeEta({
-      ...base,
-      completedVideos: 1,
-      completedSeconds: 600,
-      pace: { type: "videos_per_day", value: 1 },
+      remainingSeconds: 15 * 3600,
+      pace: { type: "minutes_per_day", value: 60 },
     })
     expect(eta.aheadDays).toBeLessThan(0)
   })
@@ -314,8 +292,6 @@ describe("computeEta (pure)", () => {
       ...base,
       remainingSeconds: 0,
       remainingVideos: 0,
-      completedVideos: 10,
-      completedSeconds: 6000,
       pace: { type: "videos_per_day", value: 1 },
     })
     expect(eta.daysRemaining).toBe(0)

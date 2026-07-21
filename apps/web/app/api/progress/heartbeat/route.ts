@@ -89,6 +89,7 @@ export async function POST(request: Request) {
 
   return Response.json({
     secondsWatched: progress!.secondsWatched,
+    furthestPositionSeconds: progress!.furthestPositionSeconds,
     isCompleted: progress!.isCompleted || completion?.changed === true,
     autoCompleted: completion?.changed ?? false,
     firstCompletionToday: completion?.firstCompletionToday ?? false,

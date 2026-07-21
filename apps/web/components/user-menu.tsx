@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { LogOut, MessageSquare, Settings } from "lucide-react"
+import { Archive, LogOut, MessageSquare, Settings } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import {
@@ -44,6 +44,10 @@ export function UserMenu({
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href="/archived" />}>
+          <Archive className="size-4" />
+          Archived
+        </DropdownMenuItem>
         <DropdownMenuItem render={<Link href="/settings" />}>
           <Settings className="size-4" />
           Settings
