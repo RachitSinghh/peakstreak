@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { ArrowLeft, Check, CheckCircle2, ExternalLink, ListPlus, ListVideo } from "lucide-react"
+import { ArrowLeft, Check, CheckCircle2, ExternalLink, ListPlus, ListVideo, Play } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button, buttonVariants } from "@workspace/ui/components/button"
@@ -13,7 +13,9 @@ import { cn } from "@workspace/ui/lib/utils"
 
 import { NotesPanel } from "@/components/notes-panel"
 import { UpNextList } from "@/components/up-next-list"
+import { usePomodoro } from "@/hooks/use-pomodoro"
 import { formatDuration } from "@/lib/pace"
+import { cyclesForTask } from "@/lib/pomodoro"
 import { setStudying } from "@/lib/study-signal"
 
 /* ── YouTube IFrame Player API (official embed only, per ToS) ── */
@@ -89,6 +91,7 @@ export function WatchView({
   initialSecondsWatched,
   resumePositionSeconds,
   isCustom = false,
+  task = null,
 }: {
   enrollmentId: string
   playlistTitle: string
@@ -97,6 +100,7 @@ export function WatchView({
   initialSecondsWatched: number
   resumePositionSeconds: number
   isCustom?: boolean
+  task?: { id: string; estimatedDurationMinutes: number } | null
 }) {
   const router = useRouter()
   const current = videos.find((v) => v.id === currentVideoId)!
@@ -108,6 +112,20 @@ export function WatchView({
   const [showCelebration, setShowCelebration] = useState(false)
   const [playlistDone, setPlaylistDone] = useState(false)
   const [busy, setBusy] = useState(false)
+  const pomodoro = usePomodoro()
+  // The incomplete task linked to this video: server-provided, or captured
+  // from the add-POST response. Presence drives Add-to-tasks → Start-focus.
+  const [activeTask, setActiveTask] = useState(task)
+  const [addingTask, setAddingTask] = useState(false)
+  // Reset to the server-provided task when navigating to another video
+  // (the component persists across in-playlist navigation).
+  const [taskVideoId, setTaskVideoId] = useState(currentVideoId)
+  if (taskVideoId !== currentVideoId) {
+    setTaskVideoId(currentVideoId)
+    setActiveTask(task)
+  }
+  const focusingThisTask =
+    activeTask != null && pomodoro.taskId === activeTask.id && pomodoro.running
 
   // Cumulative watch time (seek-proof) — drives the 80% completion rule.
   const [watchedSeconds, setWatchedSeconds] = useState(initialSecondsWatched)
@@ -407,6 +425,40 @@ export function WatchView({
     }
   }
 
+  async function addToTasks() {
+    setAddingTask(true) // disable the button so a second click can't double-add
+    try {
+      const res = await fetch("/api/todos", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: current.title,
+          estimatedDurationMinutes: Math.max(1, Math.round(current.durationSeconds / 60)),
+          sourceType: "video",
+          videoId: currentVideoId,
+          enrollmentId,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const { todo } = (await res.json()) as {
+        todo: { id: string; estimatedDurationMinutes: number }
+      }
+      setActiveTask({ id: todo.id, estimatedDurationMinutes: todo.estimatedDurationMinutes })
+      toast.success("Added to your tasks")
+    } catch {
+      toast.error("Couldn't add to tasks")
+    } finally {
+      setAddingTask(false)
+    }
+  }
+
+  function startFocus() {
+    if (!activeTask) return
+    const cycles = cyclesForTask(activeTask.estimatedDurationMinutes, pomodoro.settings.workMinutes)
+    pomodoro.startForTask({ id: activeTask.id, label: current.title, cycles })
+    toast.success(`Focus started · ${cycles} cycle${cycles === 1 ? "" : "s"}`)
+  }
+
   const completedCount = completedIds.size
   // Progress = how far into the video, not replayed seconds — so the bar
   // matches the playhead. Completion still keys off cumulative watchedSeconds.
@@ -578,19 +630,46 @@ export function WatchView({
               {isCompleted && <span className="text-success ml-1">· completed</span>}
             </p>
           </div>
-          <Button
-            variant={isCompleted ? "outline" : "default"}
-            size="sm"
-            disabled={busy}
-            onClick={toggleComplete}
-          >
-            {isCompleted ? "Unmark" : (
-              <>
-                <Check className="size-4" />
-                Mark complete
-              </>
+          <div className="flex items-center gap-2">
+            {activeTask ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={focusingThisTask}
+                onClick={startFocus}
+              >
+                {focusingThisTask ? (
+                  <>
+                    <Check className="size-4" />
+                    Focusing…
+                  </>
+                ) : (
+                  <>
+                    <Play className="size-4" />
+                    Start focus
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" disabled={addingTask} onClick={addToTasks}>
+                <ListPlus className="size-4" />
+                Add to tasks
+              </Button>
             )}
-          </Button>
+            <Button
+              variant={isCompleted ? "outline" : "default"}
+              size="sm"
+              disabled={busy}
+              onClick={toggleComplete}
+            >
+              {isCompleted ? "Unmark" : (
+                <>
+                  <Check className="size-4" />
+                  Mark complete
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Watch progress toward the 80% auto-complete threshold. */}
