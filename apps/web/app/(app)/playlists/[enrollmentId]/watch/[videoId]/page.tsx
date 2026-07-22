@@ -100,6 +100,11 @@ export default async function WatchPage({
         initialSecondsWatched={current.secondsWatched}
         resumePositionSeconds={rows.find((r) => r.id === videoId)?.furthestPositionSeconds ?? 0}
         isCustom={playlist.youtubePlaylistId === null}
+        task={
+          openTask && !openTask.completed
+            ? { id: openTask.id, estimatedDurationMinutes: openTask.estimatedDurationMinutes }
+            : null
+        }
       />
     </>
   )
