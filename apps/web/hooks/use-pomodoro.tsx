@@ -78,27 +78,69 @@ function phaseSeconds(phase: Phase, s: PomodoroSettings): number {
   }
 }
 
-function beep(freq: number) {
+// A short cue built from one or more notes: [frequency, startOffsetSec, durSec].
+function chime(notes: Array<[number, number, number]>) {
   try {
     const Ctx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     if (!Ctx) return
     const ctx = new Ctx()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = freq
-    gain.gain.setValueAtTime(0.15, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4)
-    osc.start()
-    osc.stop(ctx.currentTime + 0.4)
-    osc.onended = () => void ctx.close()
+    let end = 0
+    for (const [freq, at, dur] of notes) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "sine"
+      osc.frequency.value = freq
+      const t0 = ctx.currentTime + at
+      gain.gain.setValueAtTime(0.15, t0)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+      osc.start(t0)
+      osc.stop(t0 + dur)
+      end = Math.max(end, at + dur)
+    }
+    setTimeout(() => void ctx.close(), (end + 0.1) * 1000)
   } catch {
     /* audio is a nicety, never fatal */
   }
 }
+
+// PS-26: distinct cues. Rising two-note on start, soft descending bell into a
+// break, gentle rise back to work. Each is a synthesized fallback for a real
+// audio file in /public/audio (played if present, chimed if it fails to load).
+const CHIME_START: Array<[number, number, number]> = [
+  [523, 0, 0.18],
+  [784, 0.16, 0.3],
+]
+const CHIME_BREAK: Array<[number, number, number]> = [
+  [660, 0, 0.35],
+  [440, 0.22, 0.55],
+]
+const CHIME_WORK: Array<[number, number, number]> = [
+  [440, 0, 0.18],
+  [660, 0.15, 0.3],
+]
+// Short crisp click for the final-seconds countdown.
+const CHIME_TICK: Array<[number, number, number]> = [[1100, 0, 0.05]]
+
+// Play an audio file; fall back to the synthesized chime if it can't (missing
+// file, decode error, autoplay block). Sound is a nicety, never fatal.
+function playCue(src: string, fallback: Array<[number, number, number]>) {
+  try {
+    const audio = new Audio(src)
+    audio.volume = 0.5
+    audio.play().catch(() => chime(fallback))
+  } catch {
+    chime(fallback)
+  }
+}
+
+const CUE_START = "/audio/start.wav"
+const CUE_BREAK = "/audio/break.wav"
+const CUE_WORK = "/audio/resume.wav"
+const CUE_TICK = "/audio/tick.wav"
 
 type PomodoroContextValue = {
   ready: boolean
@@ -187,7 +229,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
           const done = natural ? prev.completedWorkCount + 1 : prev.completedWorkCount
           if (natural) {
             setCelebrationKey((k) => k + 1)
-            if (settings.soundEnabled) beep(660)
+            if (settings.soundEnabled) playCue(CUE_BREAK, CHIME_BREAK)
             // FT-S2: bank this completed focus interval toward today's study time.
             void fetch("/api/study-time/focus", {
               method: "POST",
@@ -211,7 +253,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         }
         // A break ended (or was skipped) → back to work.
         if (settings.soundEnabled && (prev.phase === "short_break" || prev.phase === "long_break")) {
-          beep(520)
+          playCue(CUE_WORK, CHIME_WORK)
         }
         return { ...prev, phase: "work", startedAt: startNow, pausedRemaining: null }
       })
@@ -229,19 +271,34 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     }
   }, [running, remaining, state.startedAt, advance])
 
+  // PS-26: tick down the final 5 seconds of a running focus session. The ref
+  // guards against double-firing on a re-render that didn't change the second.
+  const lastTickRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!running || state.phase !== "work" || !settings.soundEnabled) {
+      lastTickRef.current = null
+      return
+    }
+    if (remaining > 0 && remaining <= 5 && lastTickRef.current !== remaining) {
+      lastTickRef.current = remaining
+      playCue(CUE_TICK, CHIME_TICK)
+    }
+  }, [running, state.phase, remaining, settings.soundEnabled])
+
   // FT-S1: a running work interval means the user is studying.
   useEffect(() => {
     setStudying("pomodoro", running && state.phase === "work")
   }, [running, state.phase])
 
   const start = useCallback(() => {
+    if (settings.soundEnabled) playCue(CUE_START, CHIME_START)
     setState((prev) => ({
       ...prev,
       phase: "work",
       startedAt: Date.now(),
       pausedRemaining: null,
     }))
-  }, [])
+  }, [settings.soundEnabled])
 
   const pause = useCallback(() => {
     setState((prev) => {
@@ -271,6 +328,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
 
   const startForTask = useCallback(
     (task: { id: string; label: string; cycles: number }) => {
+      if (settings.soundEnabled) playCue(CUE_START, CHIME_START)
       setScheduleDoneTask(null)
       setState({
         ...IDLE,
@@ -281,7 +339,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         targetCycles: Math.max(1, Math.round(task.cycles)),
       })
     },
-    [],
+    [settings.soundEnabled],
   )
 
   const saveSettings = useCallback((next: PomodoroSettings) => {

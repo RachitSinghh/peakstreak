@@ -35,6 +35,7 @@ interface YTPlayer {
   getPlaybackRate(): number
   getPlayerState(): number
   seekTo(seconds: number, allowSeekAhead: boolean): void
+  pauseVideo(): void
   destroy(): void
 }
 
@@ -126,6 +127,15 @@ export function WatchView({
   }
   const focusingThisTask =
     activeTask != null && pomodoro.taskId === activeTask.id && pomodoro.running
+
+  // PS-26: when a Pomodoro break begins, pause the video and drop out of
+  // fullscreen so the break-takeover screen is actually visible.
+  const onBreak = pomodoro.phase === "short_break" || pomodoro.phase === "long_break"
+  useEffect(() => {
+    if (!onBreak) return
+    playerRef.current?.pauseVideo?.()
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+  }, [onBreak])
 
   // Cumulative watch time (seek-proof) — drives the 80% completion rule.
   const [watchedSeconds, setWatchedSeconds] = useState(initialSecondsWatched)
