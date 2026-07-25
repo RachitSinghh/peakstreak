@@ -94,6 +94,7 @@ export default async function WatchPage({
       )}
       <WatchView
         enrollmentId={enrollmentId}
+        playlistId={playlist.id}
         playlistTitle={playlist.title}
         videos={videos}
         currentVideoId={videoId}

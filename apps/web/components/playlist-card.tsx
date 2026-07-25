@@ -2,8 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Archive, ArchiveRestore, CalendarDays, ListPlus, MoreVertical, Play } from "lucide-react"
-import { useTransition } from "react"
+import { Archive, ArchiveRestore, CalendarDays, ListPlus, MoreVertical, Play, Share2 } from "lucide-react"
+import { useState, useTransition } from "react"
 import { motion, useReducedMotion } from "motion/react"
 
 import { Button } from "@workspace/ui/components/button"
@@ -16,10 +16,12 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 
 import { archivePlaylist, restorePlaylist } from "@/app/(app)/playlists/actions"
+import { ShareDialog } from "@/components/share-button"
 import { formatDuration } from "@/lib/pace"
 
 export interface PlaylistCardProps {
   id: string
+  playlistId: string
   status: "active" | "completed" | "archived"
   title: string
   channelTitle: string | null
@@ -50,6 +52,7 @@ function prettyDate(dateStr: string): string {
 
 export function PlaylistCard(props: PlaylistCardProps) {
   const [pending, startTransition] = useTransition()
+  const [shareOpen, setShareOpen] = useState(false)
   const reduce = useReducedMotion()
   const pct = props.videoCount > 0 ? (props.completedCount / props.videoCount) * 100 : 0
   const delay = reduce ? 0 : Math.min(props.index ?? 0, 8) * 0.05
@@ -117,11 +120,24 @@ export function PlaylistCard(props: PlaylistCardProps) {
                   Add video
                 </DropdownMenuItem>
               )}
+              {props.isCustom && props.status !== "archived" && (
+                <DropdownMenuItem onClick={() => setShareOpen(true)}>
+                  <Share2 className="size-4" />
+                  Share
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem render={<Link href={`/playlists/${props.id}/notes`} />}>
                 All notes
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {props.isCustom && (
+            <ShareDialog
+              playlistId={props.playlistId}
+              open={shareOpen}
+              onOpenChange={setShareOpen}
+            />
+          )}
         </div>
 
         <div>

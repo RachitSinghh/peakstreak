@@ -152,6 +152,18 @@ export const playlistVideos = pgTable(
   ],
 )
 
+// One persistent share alias per custom playlist (SHARE-01). Cascade so a
+// deleted playlist takes its link with it and the alias 404s naturally.
+export const playlistShareLinks = pgTable("playlist_share_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  playlistId: uuid("playlist_id")
+    .notNull()
+    .unique()
+    .references(() => playlists.id, { onDelete: "cascade" }),
+  alias: text("alias").notNull().unique(),
+  ...timestamps,
+})
+
 // ── User enrollment & progress ──────────────────────────────────
 
 export const userPlaylists = pgTable(

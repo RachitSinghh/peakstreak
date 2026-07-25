@@ -11,6 +11,7 @@ export const metadata: Metadata = { title: "Archived" }
 function toCardProps(e: DashboardEnrollment) {
   return {
     id: e.id,
+    playlistId: e.playlistId,
     status: e.status,
     title: e.title,
     channelTitle: e.channelTitle,

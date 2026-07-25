@@ -8,6 +8,7 @@ import { getUser } from "@/lib/user"
 
 export interface DashboardEnrollment {
   id: string
+  playlistId: string
   status: "active" | "completed" | "archived"
   title: string
   channelTitle: string | null
@@ -85,6 +86,7 @@ export async function getDashboard(userId: string, now: Date = new Date()): Prom
 
     enrollments.push({
       id: row.enrollment.id,
+      playlistId: row.playlist.id,
       status: row.enrollment.status,
       title: row.playlist.title,
       channelTitle: row.playlist.channelTitle,
