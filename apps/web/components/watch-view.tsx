@@ -12,6 +12,7 @@ import { Button, buttonVariants } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { NotesPanel } from "@/components/notes-panel"
+import { ShareButton } from "@/components/share-button"
 import { UpNextList } from "@/components/up-next-list"
 import { usePomodoro } from "@/hooks/use-pomodoro"
 import { formatDuration } from "@/lib/pace"
@@ -86,6 +87,7 @@ function clockLabel(totalSeconds: number): string {
 
 export function WatchView({
   enrollmentId,
+  playlistId,
   playlistTitle,
   videos,
   currentVideoId,
@@ -95,6 +97,7 @@ export function WatchView({
   task = null,
 }: {
   enrollmentId: string
+  playlistId: string
   playlistTitle: string
   videos: WatchVideo[]
   currentVideoId: string
@@ -491,6 +494,11 @@ export function WatchView({
           <span className="text-muted-foreground text-sm">
             · {completedCount}/{videos.length}
           </span>
+          {isCustom && (
+            <span className="ml-auto">
+              <ShareButton playlistId={playlistId} />
+            </span>
+          )}
         </div>
 
         <div className="border-border relative aspect-video w-full overflow-hidden rounded-xl border bg-black">

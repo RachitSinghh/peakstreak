@@ -15,6 +15,7 @@ import { getUser } from "@/lib/user"
 import { fetchVideosByIds } from "@/lib/youtube/client"
 import { createCustomPlaylist, getOrSyncPlaylist } from "@/lib/youtube/cache"
 import { parsePlaylistInput, parseVideoInput } from "@/lib/youtube/url"
+import { generateAlias, resolveAlias, shareUrl } from "@/lib/playlist-share"
 
 const enrollSchema = z.object({
   url: z.string().min(1),
@@ -369,4 +370,103 @@ export async function restorePlaylist(enrollmentId: string) {
     )
   revalidatePath("/dashboard")
   revalidatePath("/archived")
+}
+
+// ── Share (SHARE-01, SHARE-06) ──────────────────────────────────
+
+export type ShareState = { url?: string; error?: string }
+
+/**
+ * SHARE-01: get-or-create the one persistent share link for a custom playlist.
+ * The DB has unique(playlist_id) and unique(alias); the retry loop turns either
+ * constraint firing under a race into "return the link that won" or "try a new
+ * alias", so concurrent callers still converge on a single link.
+ */
+export async function createShareLink(playlistId: string): Promise<ShareState> {
+  await requireUserId()
+
+  const playlist = await db.query.playlists.findFirst({
+    where: eq(schema.playlists.id, playlistId),
+  })
+  if (!playlist) return { error: "Playlist not found." }
+  if (playlist.youtubePlaylistId !== null) {
+    return { error: "Only custom playlists can be shared." }
+  }
+
+  const existing = await db.query.playlistShareLinks.findFirst({
+    where: eq(schema.playlistShareLinks.playlistId, playlistId),
+    columns: { alias: true },
+  })
+  if (existing) return { url: shareUrl(existing.alias) }
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const alias = await generateAlias(playlist.title)
+    try {
+      const [row] = await db
+        .insert(schema.playlistShareLinks)
+        .values({ playlistId, alias })
+        .returning({ alias: schema.playlistShareLinks.alias })
+      return { url: shareUrl(row!.alias) }
+    } catch {
+      // Unique violation: another request either created this playlist's link
+      // (use it) or grabbed our alias (loop for a new suffix).
+      const now = await db.query.playlistShareLinks.findFirst({
+        where: eq(schema.playlistShareLinks.playlistId, playlistId),
+        columns: { alias: true },
+      })
+      if (now) return { url: shareUrl(now.alias) }
+    }
+  }
+  return { error: "Could not create a share link. Please try again." }
+}
+
+/**
+ * SHARE-06: clone a shared playlist into the caller's account as a fully
+ * independent custom playlist, then enroll them. Videos are a shared cache,
+ * so cloning is a new playlists row plus copied join rows — no re-fetch.
+ * Reuses enrollUserInPlaylist, so it redirects to /dashboard on success.
+ */
+export async function cloneSharedPlaylist(alias: string): Promise<EnrollState> {
+  const userId = await requireUserId()
+
+  const source = await resolveAlias(alias)
+  if (!source) return { error: "This link is no longer valid." }
+  if (source.videoCount === 0) return { error: "This playlist has no videos to save." }
+
+  const clone = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(schema.playlists)
+      .values({
+        youtubePlaylistId: null,
+        title: source.title,
+        channelTitle: source.channelTitle,
+        thumbnailUrl: source.thumbnailUrl,
+        videoCount: source.videoCount,
+        totalDurationSeconds: source.totalDurationSeconds,
+        unavailableCount: source.unavailableCount,
+        unembeddableCount: source.unembeddableCount,
+        lastSyncedAt: new Date(),
+        syncStatus: "ok",
+      })
+      .returning()
+
+    const srcVideos = await tx
+      .select({
+        videoId: schema.playlistVideos.videoId,
+        position: schema.playlistVideos.position,
+      })
+      .from(schema.playlistVideos)
+      .where(eq(schema.playlistVideos.playlistId, source.id))
+
+    if (srcVideos.length > 0) {
+      await tx
+        .insert(schema.playlistVideos)
+        .values(srcVideos.map((v) => ({ playlistId: row!.id, ...v })))
+    }
+    return row!
+  })
+
+  // ponytail: default pace 30 min/day, 1.0x — the clone is fully editable, so
+  // the user retunes it after. Adds no picker UI to the save flow.
+  return enrollUserInPlaylist(userId, clone, { type: "minutes_per_day", value: 30 }, 1.0)
 }
