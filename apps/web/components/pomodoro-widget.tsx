@@ -35,6 +35,15 @@ function mmss(seconds: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 }
 
+// PS-26: rotating break nudges, cycled while a break is on the widget.
+const BREAK_QUOTES = [
+  "You deserve this, go have some tea",
+  "Go have some tea",
+  "Walk around",
+  "Talk to a friend",
+  "Talk to your partner",
+]
+
 const PHASE_META = {
   work: { label: "Focus", tint: "text-primary", dot: "bg-primary" },
   short_break: { label: "Break earned 🎉", tint: "text-success", dot: "bg-success" },
@@ -48,6 +57,7 @@ export function PomodoroWidget() {
   const [open, setOpen] = useState(false)
   const [celebrate, setCelebrate] = useState(false)
   const lastCeleb = useRef(0)
+  const [quoteIdx, setQuoteIdx] = useState(0)
 
   // FT-PM2: fire confetti on each *natural* work completion.
   useEffect(() => {
@@ -58,6 +68,17 @@ export function PomodoroWidget() {
     const id = setTimeout(() => setCelebrate(false), 3500)
     return () => clearTimeout(id)
   }, [p.celebrationKey, p.settings.animationsEnabled])
+
+  // Rotate the break nudge every ~4s while a break is showing.
+  useEffect(() => {
+    const breaking = p.phase === "short_break" || p.phase === "long_break"
+    if (!breaking) {
+      setQuoteIdx(0)
+      return
+    }
+    const id = setInterval(() => setQuoteIdx((i) => (i + 1) % BREAK_QUOTES.length), 4000)
+    return () => clearInterval(id)
+  }, [p.phase])
 
   if (!p.ready) return null
 
@@ -113,8 +134,11 @@ export function PomodoroWidget() {
         </div>
 
         {onBreak ? (
-          <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-xs">
-            <Coffee className="size-3.5" /> You earned this break.
+          <p
+            key={quoteIdx}
+            className="text-muted-foreground flex items-center justify-center gap-1.5 px-1 text-center text-xs"
+          >
+            <Coffee className="size-3.5 shrink-0" /> {BREAK_QUOTES[quoteIdx]}
           </p>
         ) : null}
 
