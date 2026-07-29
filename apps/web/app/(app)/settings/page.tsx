@@ -30,7 +30,6 @@ export default async function SettingsPage() {
         displayName={user.displayName ?? ""}
         username={user.username ?? ""}
         bio={user.bio ?? ""}
-        profilePublic={user.profileVisibility === "public"}
       />
     </div>
   )

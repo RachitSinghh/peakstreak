@@ -9,6 +9,8 @@ export type LeaderboardMetric = "videos" | "streak" | "playlists" | "watch"
 export interface LeaderboardRow {
   userId: string
   displayName: string
+  /** Set only for public profiles — lets the table link to `/u/:username`. */
+  username: string | null
   videosCompleted: number
   playlistsCompleted: number
   watchSeconds: number

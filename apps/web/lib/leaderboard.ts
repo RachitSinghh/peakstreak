@@ -33,6 +33,7 @@ export async function getLeaderboard(
       id: schema.users.id,
       name: schema.users.name,
       displayName: schema.users.displayName,
+      username: schema.users.username,
       timezone: schema.users.timezone,
       showOnLeaderboard: schema.users.showOnLeaderboard,
     })
@@ -110,6 +111,7 @@ export async function getLeaderboard(
       return {
         userId: u.id,
         displayName: resolveDisplayName(u.displayName, u.name, u.id),
+        username: u.username,
         videosCompleted: videosBy.get(u.id) ?? 0,
         playlistsCompleted: playlistsBy.get(u.id) ?? 0,
         watchSeconds: watchBy.get(u.id) ?? 0,

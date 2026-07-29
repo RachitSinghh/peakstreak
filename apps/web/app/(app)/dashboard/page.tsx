@@ -6,7 +6,6 @@ import { Button } from "@workspace/ui/components/button"
 
 import { requireUserId } from "@/lib/auth"
 import { getDashboard, type DashboardEnrollment } from "@/lib/dashboard"
-import { ContributionGraph } from "@/components/contribution-graph"
 import { PlaylistCard } from "@/components/playlist-card"
 import { StreakStrip } from "@/components/streak-strip"
 import { FadeUp } from "@/components/motion/fade-up"
@@ -37,8 +36,7 @@ function toCardProps(e: DashboardEnrollment) {
 
 export default async function DashboardPage() {
   const userId = await requireUserId()
-  const { active, completed, streak, activityDays, today } =
-    await getDashboard(userId)
+  const { active, completed, streak } = await getDashboard(userId)
 
   // Archived playlists live on their own page, so they don't count here.
   const isEmpty = active.length === 0 && completed.length === 0
@@ -48,11 +46,6 @@ export default async function DashboardPage() {
       <FadeUp>
         <StreakStrip streak={streak} />
       </FadeUp>
-      {!isEmpty && (
-        <FadeUp delay={0.08}>
-          <ContributionGraph days={activityDays} today={today} />
-        </FadeUp>
-      )}
 
       {isEmpty ? (
         <FadeUp delay={0.1}>

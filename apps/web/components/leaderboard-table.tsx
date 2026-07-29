@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { formatDuration } from "@/lib/pace"
@@ -86,7 +87,12 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
                     {medal(rank) ?? rank}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-medium">{row.displayName}</span>
+                    <Link
+                      href={`/u/${row.username ?? row.userId}`}
+                      className="font-medium hover:underline"
+                    >
+                      {row.displayName}
+                    </Link>
                     {row.isCurrentUser && (
                       <span className="bg-primary/15 text-primary ml-2 rounded px-1.5 py-0.5 text-xs">
                         You

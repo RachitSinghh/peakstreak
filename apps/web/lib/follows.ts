@@ -5,19 +5,30 @@ import { db, schema } from "@/lib/db"
 import { resolveDisplayName } from "@/lib/leaderboard-shared"
 
 /**
- * SOC-02: the follow graph. Following is one-directional. All writes are
- * idempotent (a duplicate follow is a no-op, an absent unfollow is a no-op)
- * so the UI can fire optimistically without fear of doubles.
+ * SOC-02: the follow graph, directional with approval. A follow is created as
+ * `pending` (a request) and becomes `accepted` when the followee approves.
+ * Only an accepted follow (follower → followee) lets the follower see the
+ * followee's profile and activity. All writes are idempotent.
  */
 
+/** The viewer's relationship to a target, from the viewer→target direction. */
+export type FollowState = "none" | "requested" | "following"
+
 export interface FollowListEntry {
+  userId: string
   displayName: string
   image: string | null
-  /** Present only when the user can be linked to (public profile). */
   username: string | null
 }
 
-/** Resolve any claimed username to its user id, visibility-agnostic. */
+export interface IncomingRequest {
+  followerId: string
+  displayName: string
+  image: string | null
+  username: string | null
+}
+
+/** Resolve any claimed username to its user id. */
 export async function resolveUsername(username: string): Promise<string | null> {
   const row = await db.query.users.findFirst({
     where: eq(schema.users.username, username.trim().toLowerCase()),
@@ -26,16 +37,25 @@ export async function resolveUsername(username: string): Promise<string | null> 
   return row?.id ?? null
 }
 
-export async function isFollowing(followerId: string, followeeId: string): Promise<boolean> {
+/** The viewer→target relationship: none / requested (pending) / following (accepted). */
+export async function getFollowState(viewerId: string, targetId: string): Promise<FollowState> {
   const row = await db.query.follows.findFirst({
     where: and(
-      eq(schema.follows.followerId, followerId),
-      eq(schema.follows.followeeId, followeeId),
+      eq(schema.follows.followerId, viewerId),
+      eq(schema.follows.followeeId, targetId),
     ),
   })
-  return !!row
+  if (!row) return "none"
+  return row.status === "accepted" ? "following" : "requested"
 }
 
+/** Can the viewer see the target's profile? Self, or an accepted follow. */
+export async function canViewProfile(viewerId: string, targetId: string): Promise<boolean> {
+  if (viewerId === targetId) return true
+  return (await getFollowState(viewerId, targetId)) === "following"
+}
+
+/** Counts only accepted edges. `followers` = accepted → me; `following` = accepted from me. */
 export async function getFollowCounts(
   userId: string,
 ): Promise<{ followers: number; following: number }> {
@@ -43,42 +63,82 @@ export async function getFollowCounts(
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(schema.follows)
-      .where(eq(schema.follows.followeeId, userId)),
+      .where(and(eq(schema.follows.followeeId, userId), eq(schema.follows.status, "accepted"))),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(schema.follows)
-      .where(eq(schema.follows.followerId, userId)),
+      .where(and(eq(schema.follows.followerId, userId), eq(schema.follows.status, "accepted"))),
   ])
   return { followers: followers[0]?.count ?? 0, following: following[0]?.count ?? 0 }
 }
 
-export async function followUserById(followerId: string, followeeId: string): Promise<void> {
-  if (followerId === followeeId) return // defense-in-depth; the action also guards
+/** Send a follow request (follower → followee). No-op on self or a duplicate. */
+export async function requestFollow(followerId: string, followeeId: string): Promise<void> {
+  if (followerId === followeeId) return
   const inserted = await db
     .insert(schema.follows)
-    .values({ followerId, followeeId })
+    .values({ followerId, followeeId, status: "pending" })
     .onConflictDoNothing()
     .returning({ followerId: schema.follows.followerId })
   if (inserted.length > 0) {
-    await track("user_followed", { userId: followerId, properties: { followeeId } })
+    await track("follow_requested", { userId: followerId, properties: { followeeId } })
   }
 }
 
-export async function unfollowUserById(followerId: string, followeeId: string): Promise<void> {
-  await db
-    .delete(schema.follows)
+/** Followee accepts a pending request from follower. */
+export async function acceptFollow(followeeId: string, followerId: string): Promise<void> {
+  const updated = await db
+    .update(schema.follows)
+    .set({ status: "accepted" })
     .where(
       and(
         eq(schema.follows.followerId, followerId),
         eq(schema.follows.followeeId, followeeId),
+        eq(schema.follows.status, "pending"),
       ),
+    )
+    .returning({ followerId: schema.follows.followerId })
+  if (updated.length > 0) {
+    await track("follow_accepted", { userId: followeeId, properties: { followerId } })
+  }
+}
+
+/** Remove an edge in either direction — cancels a request, declines one, or unfollows. */
+export async function removeFollow(followerId: string, followeeId: string): Promise<void> {
+  await db
+    .delete(schema.follows)
+    .where(
+      and(eq(schema.follows.followerId, followerId), eq(schema.follows.followeeId, followeeId)),
     )
 }
 
+/** Pending requests awaiting this user's approval, newest first. */
+export async function getIncomingRequests(userId: string): Promise<IncomingRequest[]> {
+  const rows = await db
+    .select({
+      name: schema.users.name,
+      displayName: schema.users.displayName,
+      username: schema.users.username,
+      image: schema.users.image,
+      userId: schema.users.id,
+    })
+    .from(schema.follows)
+    .innerJoin(schema.users, eq(schema.users.id, schema.follows.followerId))
+    .where(and(eq(schema.follows.followeeId, userId), eq(schema.follows.status, "pending")))
+    .orderBy(sql`${schema.follows.createdAt} desc`)
+
+  return rows.map((r) => ({
+    followerId: r.userId,
+    displayName: resolveDisplayName(r.displayName, r.name, r.userId),
+    image: r.image,
+    username: r.username,
+  }))
+}
+
 /**
- * The users on one side of `userId`'s follow graph. `followers` = people who
- * follow them; `following` = people they follow. Linkable only when the other
- * user has a public profile with a username.
+ * Accepted connections on one side of `userId`. `followers` = people who
+ * follow them; `following` = people they follow. Linkable when the other user
+ * has a username (their profile page is itself connection-gated).
  */
 export async function getFollowList(
   userId: string,
@@ -91,7 +151,6 @@ export async function getFollowList(
       displayName: schema.users.displayName,
       username: schema.users.username,
       image: schema.users.image,
-      visibility: schema.users.profileVisibility,
       userId: schema.users.id,
     })
     .from(schema.follows)
@@ -99,12 +158,18 @@ export async function getFollowList(
       schema.users,
       eq(schema.users.id, toFollowers ? schema.follows.followerId : schema.follows.followeeId),
     )
-    .where(eq(toFollowers ? schema.follows.followeeId : schema.follows.followerId, userId))
+    .where(
+      and(
+        eq(toFollowers ? schema.follows.followeeId : schema.follows.followerId, userId),
+        eq(schema.follows.status, "accepted"),
+      ),
+    )
     .orderBy(sql`${schema.follows.createdAt} desc`)
 
   return rows.map((r) => ({
+    userId: r.userId,
     displayName: resolveDisplayName(r.displayName, r.name, r.userId),
     image: r.image,
-    username: r.visibility === "public" && r.username ? r.username : null,
+    username: r.username,
   }))
 }

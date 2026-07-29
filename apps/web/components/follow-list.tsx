@@ -32,29 +32,25 @@ export function FollowList({
         <p className="text-muted-foreground text-sm">{emptyLabel}</p>
       ) : (
         <ul className="flex flex-col gap-1">
-          {entries.map((e, i) => {
-            const row = (
-              <div className="flex items-center gap-3 rounded-lg p-2">
-                <Avatar size="sm">
-                  {e.image && <AvatarImage src={e.image} alt="" />}
-                  <AvatarFallback>{e.displayName.slice(0, 1).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{e.displayName}</span>
-                {e.username && <span className="text-muted-foreground text-xs">@{e.username}</span>}
-              </div>
-            )
-            return (
-              <li key={i}>
-                {e.username ? (
-                  <Link href={`/u/${e.username}`} className="hover:bg-secondary block rounded-lg">
-                    {row}
-                  </Link>
-                ) : (
-                  row
-                )}
-              </li>
-            )
-          })}
+          {entries.map((e) => (
+            <li key={e.userId}>
+              <Link
+                href={`/u/${e.username ?? e.userId}`}
+                className="hover:bg-secondary block rounded-lg"
+              >
+                <div className="flex items-center gap-3 rounded-lg p-2">
+                  <Avatar size="sm">
+                    {e.image && <AvatarImage src={e.image} alt="" />}
+                    <AvatarFallback>{e.displayName.slice(0, 1).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium">{e.displayName}</span>
+                  {e.username && (
+                    <span className="text-muted-foreground text-xs">@{e.username}</span>
+                  )}
+                </div>
+              </Link>
+            </li>
+          ))}
         </ul>
       )}
     </div>

@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { toast } from "sonner"
+
+import { cn } from "@workspace/ui/lib/utils"
 
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -15,7 +17,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 
-import { updateSettings } from "@/app/(app)/settings/actions"
+import { checkUsername, updateSettings, type UsernameCheck } from "@/app/(app)/settings/actions"
 
 function timezoneOptions(current: string): string[] {
   const zones =
@@ -36,7 +38,6 @@ export function SettingsForm(props: {
   displayName: string
   username: string
   bio: string
-  profilePublic: boolean
 }) {
   const [timezone, setTimezone] = useState(props.timezone)
   const [remindersEnabled, setRemindersEnabled] = useState(props.remindersEnabled)
@@ -45,8 +46,32 @@ export function SettingsForm(props: {
   const [displayName, setDisplayName] = useState(props.displayName)
   const [username, setUsername] = useState(props.username)
   const [bio, setBio] = useState(props.bio)
-  const [profilePublic, setProfilePublic] = useState(props.profilePublic)
+  // The last availability result, tagged with the value it was for so a stale
+  // result is simply ignored at render time (no synchronous reset needed).
+  const [usernameCheck, setUsernameCheck] = useState<(UsernameCheck & { value: string }) | null>(
+    null,
+  )
   const [pending, startTransition] = useTransition()
+
+  const usernameValue = username.trim().toLowerCase()
+  const isOwnCurrent = usernameValue === props.username.trim().toLowerCase()
+  const activeCheck =
+    usernameCheck && usernameCheck.value === usernameValue ? usernameCheck : null
+
+  // Live username availability, debounced. Skips empties and the user's own
+  // current name (no point flagging "available" for what they already own).
+  useEffect(() => {
+    if (usernameValue === "" || isOwnCurrent) return
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      const result = await checkUsername(usernameValue)
+      if (!cancelled) setUsernameCheck({ ...result, value: usernameValue })
+    }, 400)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [usernameValue, isOwnCurrent])
 
   function submit() {
     startTransition(async () => {
@@ -58,7 +83,6 @@ export function SettingsForm(props: {
         displayName: displayName.trim(),
         username: username.trim().toLowerCase(),
         bio: bio.trim(),
-        profilePublic,
       })
       if (result.error) toast.error(result.error)
       else toast.success("Settings saved")
@@ -170,10 +194,21 @@ export function SettingsForm(props: {
               onChange={(e) => setUsername(e.target.value)}
             />
           </div>
-          <p className="text-muted-foreground text-xs">
-            3–30 characters, lowercase letters, numbers and hyphens. This is the address of
-            your public profile.
-          </p>
+          {activeCheck ? (
+            <p
+              className={cn(
+                "text-xs",
+                activeCheck.status === "available" ? "text-emerald-500" : "text-destructive",
+              )}
+            >
+              {activeCheck.message}
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              3–30 characters, lowercase letters, numbers and hyphens. Sets your profile
+              address so others can find and follow you.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -188,32 +223,10 @@ export function SettingsForm(props: {
           />
         </div>
 
-        <div className="border-border bg-card flex items-center justify-between rounded-xl border p-4">
-          <div>
-            <Label htmlFor="profile-toggle">Make my profile public</Label>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              Anyone with the link sees your streak, hours, and activity. Off by default.
-            </p>
-          </div>
-          <input
-            id="profile-toggle"
-            type="checkbox"
-            checked={profilePublic}
-            onChange={(e) => setProfilePublic(e.target.checked)}
-            className="accent-primary size-5"
-          />
-        </div>
-
-        {profilePublic && username.trim() && (
-          <a
-            href={`/u/${username.trim().toLowerCase()}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary text-sm underline underline-offset-4"
-          >
-            View your public profile →
-          </a>
-        )}
+        <p className="text-muted-foreground text-xs">
+          Your profile is private. Only people whose follow request you accept can see your
+          streak, hours, and activity.
+        </p>
       </div>
 
       <Button onClick={submit} disabled={pending} className="self-start">
