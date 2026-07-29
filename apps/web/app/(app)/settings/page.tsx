@@ -28,6 +28,9 @@ export default async function SettingsPage() {
         reminderHourLocal={prefs?.reminderHourLocal ?? 19}
         showOnLeaderboard={user.showOnLeaderboard}
         displayName={user.displayName ?? ""}
+        username={user.username ?? ""}
+        bio={user.bio ?? ""}
+        profilePublic={user.profileVisibility === "public"}
       />
     </div>
   )

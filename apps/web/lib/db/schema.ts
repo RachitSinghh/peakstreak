@@ -41,6 +41,14 @@ export const users = pgTable("users", {
   // first name, then an anonymous "Learner #…" label.
   showOnLeaderboard: boolean("show_on_leaderboard").notNull().default(true),
   displayName: text("display_name"),
+  // SOC-01: claimable public identity. Null until claimed; unique at the DB
+  // level. Profiles are private by default — /u/:username only renders when
+  // profileVisibility is "public".
+  username: text("username").unique(),
+  bio: text("bio"),
+  profileVisibility: text("profile_visibility", { enum: ["private", "public"] })
+    .notNull()
+    .default("private"),
   ...timestamps,
 })
 
