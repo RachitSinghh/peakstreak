@@ -20,10 +20,10 @@ async function toggleFollow(username: string, follow: boolean): Promise<FollowSt
   return { ok: true }
 }
 
-export function followUser(username: string): Promise<FollowState> {
+export async function followUser(username: string): Promise<FollowState> {
   return toggleFollow(username, true)
 }
 
-export function unfollowUser(username: string): Promise<FollowState> {
+export async function unfollowUser(username: string): Promise<FollowState> {
   return toggleFollow(username, false)
 }
