@@ -41,14 +41,11 @@ export const users = pgTable("users", {
   // first name, then an anonymous "Learner #…" label.
   showOnLeaderboard: boolean("show_on_leaderboard").notNull().default(true),
   displayName: text("display_name"),
-  // SOC-01: claimable public identity. Null until claimed; unique at the DB
-  // level. Profiles are private by default — /u/:username only renders when
-  // profileVisibility is "public".
+  // SOC-01: claimable handle for the profile URL (/u/:username). Null until
+  // claimed; unique at the DB level. Profiles aren't public — their stats are
+  // visible only to the owner and to accepted followers (see `follows`).
   username: text("username").unique(),
   bio: text("bio"),
-  profileVisibility: text("profile_visibility", { enum: ["private", "public"] })
-    .notNull()
-    .default("private"),
   ...timestamps,
 })
 
@@ -108,8 +105,10 @@ export const passwordResetTokens = pgTable(
   (t) => [index("password_reset_tokens_user_idx").on(t.userId)],
 )
 
-// SOC-02: one-directional follow graph. PK on the pair dedups and covers
-// follower-side lookups; the extra index covers "who follows this user".
+// SOC-02: directional follow graph with approval. A follow starts `pending`
+// (a request) and becomes `accepted` when the followee approves. The follower
+// can see the followee's profile/activity only once accepted. PK on the pair
+// dedups; the extra index covers "who follows/requested this user".
 export const follows = pgTable(
   "follows",
   {
@@ -119,6 +118,9 @@ export const follows = pgTable(
     followeeId: uuid("followee_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["pending", "accepted"] })
+      .notNull()
+      .default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

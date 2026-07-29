@@ -5,6 +5,7 @@ import { rankBy, resolveDisplayName, type LeaderboardRow } from "@/lib/leaderboa
 function row(over: Partial<LeaderboardRow> & { userId: string }): LeaderboardRow {
   return {
     displayName: over.userId,
+    username: null,
     videosCompleted: 0,
     playlistsCompleted: 0,
     watchSeconds: 0,

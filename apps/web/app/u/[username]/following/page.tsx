@@ -2,8 +2,9 @@ import type { Metadata } from "next"
 import Link from "next/link"
 
 import { FollowList } from "@/components/follow-list"
-import { getFollowList } from "@/lib/follows"
-import { getPublicProfile } from "@/lib/profile"
+import { currentUserId } from "@/lib/auth"
+import { canViewProfile, getFollowList } from "@/lib/follows"
+import { getProfileIdentity } from "@/lib/profile"
 
 export const metadata: Metadata = { title: "Following", robots: { index: false, follow: false } }
 
@@ -13,12 +14,14 @@ export default async function FollowingPage({
   params: Promise<{ username: string }>
 }) {
   const { username } = await params
-  const profile = await getPublicProfile(username)
+  const identity = await getProfileIdentity(username)
+  const viewerId = await currentUserId()
+  const canView = identity && viewerId ? await canViewProfile(viewerId, identity.userId) : false
 
-  if (!profile) {
+  if (!identity || !canView) {
     return (
       <div className="mx-auto max-w-md py-16 text-center">
-        <h1 className="mb-2 text-xl font-semibold">Profile not found</h1>
+        <h1 className="mb-2 text-xl font-semibold">Not available</h1>
         <Link href="/" className="text-primary text-sm underline underline-offset-4">
           Go to PeakStreak
         </Link>
@@ -26,11 +29,11 @@ export default async function FollowingPage({
     )
   }
 
-  const entries = await getFollowList(profile.userId, "following")
+  const entries = await getFollowList(identity.userId, "following")
   return (
     <FollowList
-      ownerUsername={profile.username}
-      title={`${profile.displayName} follows`}
+      ownerUsername={identity.username ?? identity.userId}
+      title={`${identity.displayName} follows`}
       emptyLabel="Not following anyone yet."
       entries={entries}
     />

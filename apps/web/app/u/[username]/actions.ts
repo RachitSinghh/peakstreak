@@ -3,27 +3,27 @@
 import { revalidatePath } from "next/cache"
 
 import { requireUserId } from "@/lib/auth"
-import { followUserById, resolveUsername, unfollowUserById } from "@/lib/follows"
+import { removeFollow, requestFollow } from "@/lib/follows"
 
-export type FollowState = { ok?: true; error?: string }
+export type FollowActionState = { ok?: true; error?: string }
 
-async function toggleFollow(username: string, follow: boolean): Promise<FollowState> {
+/** Send a follow request to `targetId`. */
+export async function sendFollowRequest(targetId: string): Promise<FollowActionState> {
   const me = await requireUserId()
-  const target = await resolveUsername(username)
-  if (!target) return { error: "User not found." }
-  if (target === me) return { error: "You can't follow yourself." }
-
-  if (follow) await followUserById(me, target)
-  else await unfollowUserById(me, target)
-
-  revalidatePath(`/u/${username}`)
+  if (targetId === me) return { error: "You can't follow yourself." }
+  try {
+    await requestFollow(me, targetId)
+  } catch {
+    return { error: "User not found." } // FK violation → target doesn't exist
+  }
+  revalidatePath("/profile")
   return { ok: true }
 }
 
-export async function followUser(username: string): Promise<FollowState> {
-  return toggleFollow(username, true)
-}
-
-export async function unfollowUser(username: string): Promise<FollowState> {
-  return toggleFollow(username, false)
+/** Cancel a pending request or unfollow — removes the me→target edge. */
+export async function cancelFollow(targetId: string): Promise<FollowActionState> {
+  const me = await requireUserId()
+  await removeFollow(me, targetId)
+  revalidatePath("/profile")
+  return { ok: true }
 }

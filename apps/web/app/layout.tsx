@@ -52,16 +52,15 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
+    // Dark-only in v1 per DESIGN.md — the theme is a static class, no switcher.
     <html
       lang="en"
-      suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn("dark antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
-        {/* Dark-only in v1 per DESIGN.md — no light theme exists yet. */}
-        <ThemeProvider forcedTheme="dark">
+        <ThemeProvider>
           {children}
-          <Toaster />
+          <Toaster theme="dark" />
         </ThemeProvider>
         <Analytics />
       </body>

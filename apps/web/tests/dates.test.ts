@@ -7,6 +7,7 @@ import {
   isValidDateString,
   localDateString,
   localHour,
+  timeAgo,
   weekStart,
 } from "@/lib/dates"
 
@@ -64,5 +65,20 @@ describe("date-string arithmetic", () => {
     expect(isValidDateString("2026-02-30")).toBe(false)
     expect(isValidDateString("2026-7-5")).toBe(false)
     expect(isValidDateString("garbage")).toBe(false)
+  })
+})
+
+describe("timeAgo", () => {
+  const now = new Date("2026-07-30T12:00:00Z")
+  it("formats each bucket", () => {
+    expect(timeAgo(new Date("2026-07-30T11:59:30Z"), now)).toBe("just now")
+    expect(timeAgo(new Date("2026-07-30T11:55:00Z"), now)).toBe("5m ago")
+    expect(timeAgo(new Date("2026-07-30T09:00:00Z"), now)).toBe("3h ago")
+    expect(timeAgo(new Date("2026-07-27T12:00:00Z"), now)).toBe("3d ago")
+    expect(timeAgo(new Date("2026-07-09T12:00:00Z"), now)).toBe("3w ago")
+    expect(timeAgo(new Date("2026-05-01T12:00:00Z"), now)).toBe("3mo ago")
+  })
+  it("never goes negative for a future instant", () => {
+    expect(timeAgo(new Date("2026-07-30T12:01:00Z"), now)).toBe("just now")
   })
 })

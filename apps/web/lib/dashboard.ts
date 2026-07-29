@@ -1,7 +1,7 @@
-import { and, eq, gte, ne, sql } from "drizzle-orm"
+import { and, eq, ne, sql } from "drizzle-orm"
 
 import { db, schema } from "@/lib/db"
-import { addDays, localDateString } from "@/lib/dates"
+import { localDateString } from "@/lib/dates"
 import { computeEta, nextUnwatchedVideo, type Eta } from "@/lib/progress"
 import { getStreakSummary, type StreakSummary } from "@/lib/streaks"
 import { getUser } from "@/lib/user"
@@ -31,13 +31,6 @@ export interface DashboardData {
   completed: DashboardEnrollment[]
   archived: DashboardEnrollment[]
   streak: StreakSummary
-  activityDays: Array<{
-    activityDate: string
-    videosCompleted: number
-    isFrozen: boolean
-    secondsWatched: number
-  }>
-  today: string
 }
 
 export async function getDashboard(userId: string, now: Date = new Date()): Promise<DashboardData> {
@@ -106,28 +99,11 @@ export async function getDashboard(userId: string, now: Date = new Date()): Prom
 
   const streak = await getStreakSummary(userId, user.timezone, now)
 
-  const activityDays = await db
-    .select({
-      activityDate: schema.dailyActivity.activityDate,
-      videosCompleted: schema.dailyActivity.videosCompleted,
-      isFrozen: schema.dailyActivity.isFrozen,
-      secondsWatched: schema.dailyActivity.secondsWatched,
-    })
-    .from(schema.dailyActivity)
-    .where(
-      and(
-        eq(schema.dailyActivity.userId, userId),
-        gte(schema.dailyActivity.activityDate, addDays(today, -366)),
-      ),
-    )
-
   return {
     active: enrollments.filter((e) => e.status === "active"),
     completed: enrollments.filter((e) => e.status === "completed"),
     archived: enrollments.filter((e) => e.status === "archived"),
     streak,
-    activityDays,
-    today,
   }
 }
 

@@ -16,13 +16,31 @@ const settingsSchema = z.object({
   showOnLeaderboard: z.boolean(),
   // Empty string → no custom name (falls back to first name / anonymous).
   displayName: z.string().trim().max(40),
-  // SOC-01: public profile. Empty username → leave whatever's already set.
+  // SOC-01: profile handle + bio. Empty username → leave whatever's already set.
   username: z.string().trim().max(30),
   bio: z.string().trim().max(160),
-  profilePublic: z.boolean(),
 })
 
 export type SettingsState = { error?: string; saved?: boolean }
+
+export type UsernameCheck = { status: "available" | "taken" | "invalid"; message: string }
+
+/** Live availability check for the settings username field (debounced client-side). */
+export async function checkUsername(raw: string): Promise<UsernameCheck> {
+  const userId = await requireUserId()
+
+  const check = validateUsername(raw)
+  if (!check.ok) return { status: "invalid", message: check.error }
+
+  const existing = await db.query.users.findFirst({
+    where: eq(schema.users.username, check.value),
+    columns: { id: true },
+  })
+  if (existing && existing.id !== userId) {
+    return { status: "taken", message: "That username is taken." }
+  }
+  return { status: "available", message: "Available" }
+}
 
 export async function updateSettings(
   input: z.infer<typeof settingsSchema>,
@@ -37,7 +55,6 @@ export async function updateSettings(
     return { error: "Unknown timezone — pick one from the list." }
   }
 
-  // Resolve the username first so we know whether the profile can go public.
   const current = await db.query.users.findFirst({
     where: eq(schema.users.id, userId),
     columns: { username: true },
@@ -57,10 +74,6 @@ export async function updateSettings(
     }
   }
 
-  if (parsed.data.profilePublic && !username) {
-    return { error: "Claim a username before making your profile public." }
-  }
-
   try {
     await db
       .update(schema.users)
@@ -70,7 +83,6 @@ export async function updateSettings(
         displayName: parsed.data.displayName === "" ? null : parsed.data.displayName,
         username,
         bio: parsed.data.bio === "" ? null : parsed.data.bio,
-        profileVisibility: parsed.data.profilePublic ? "public" : "private",
         updatedAt: new Date(),
       })
       .where(eq(schema.users.id, userId))

@@ -3,54 +3,76 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { resetDb, seedUser } from "./helpers"
 
 import {
-  followUserById,
+  acceptFollow,
+  canViewProfile,
   getFollowCounts,
   getFollowList,
-  isFollowing,
+  getFollowState,
+  getIncomingRequests,
+  removeFollow,
+  requestFollow,
   resolveUsername,
-  unfollowUserById,
 } from "@/lib/follows"
 
-describe("follow graph", () => {
+describe("follow graph (request + approval)", () => {
   beforeEach(resetDb)
 
-  it("follows persist, are idempotent, and unfollow reverses", async () => {
+  it("request → pending, accept → following; counts only accepted", async () => {
     const a = await seedUser()
     const b = await seedUser()
 
-    await followUserById(a.id, b.id)
-    await followUserById(a.id, b.id) // duplicate → no-op
-    expect(await isFollowing(a.id, b.id)).toBe(true)
+    await requestFollow(a.id, b.id)
+    await requestFollow(a.id, b.id) // duplicate → no-op
+    expect(await getFollowState(a.id, b.id)).toBe("requested")
+    expect(await canViewProfile(a.id, b.id)).toBe(false) // pending doesn't grant access
+    expect((await getFollowCounts(b.id)).followers).toBe(0) // pending not counted
+
+    // b sees the incoming request and accepts.
+    const reqs = await getIncomingRequests(b.id)
+    expect(reqs.map((r) => r.followerId)).toEqual([a.id])
+    await acceptFollow(b.id, a.id)
+
+    expect(await getFollowState(a.id, b.id)).toBe("following")
+    expect(await canViewProfile(a.id, b.id)).toBe(true)
     expect((await getFollowCounts(b.id)).followers).toBe(1)
     expect((await getFollowCounts(a.id)).following).toBe(1)
+    expect(await getIncomingRequests(b.id)).toHaveLength(0)
+  })
 
-    await unfollowUserById(a.id, b.id)
-    await unfollowUserById(a.id, b.id) // absent → no-op
-    expect(await isFollowing(a.id, b.id)).toBe(false)
-    expect((await getFollowCounts(b.id)).followers).toBe(0)
+  it("cancel / unfollow removes the edge; self is always viewable", async () => {
+    const a = await seedUser()
+    const b = await seedUser()
+    await requestFollow(a.id, b.id)
+    await removeFollow(a.id, b.id) // cancel the pending request
+    expect(await getFollowState(a.id, b.id)).toBe("none")
+
+    await requestFollow(a.id, b.id)
+    await acceptFollow(b.id, a.id)
+    await removeFollow(a.id, b.id) // unfollow
+    expect(await getFollowState(a.id, b.id)).toBe("none")
+    expect(await canViewProfile(a.id, a.id)).toBe(true)
   })
 
   it("ignores a self-follow", async () => {
     const a = await seedUser()
-    await followUserById(a.id, a.id)
+    await requestFollow(a.id, a.id)
     expect((await getFollowCounts(a.id)).followers).toBe(0)
   })
 
-  it("resolves usernames and links only public profiles in lists", async () => {
-    const owner = await seedUser({ username: "owner", profileVisibility: "public" })
-    const pub = await seedUser({ username: "pubfan", profileVisibility: "public", name: "Grace" })
-    const priv = await seedUser({ username: "privfan", profileVisibility: "private", name: "Alan" })
+  it("follow lists show only accepted edges and resolve usernames", async () => {
+    const owner = await seedUser({ username: "owner" })
+    const accepted = await seedUser({ username: "yes", name: "Grace" })
+    const pending = await seedUser({ username: "no", name: "Alan" })
 
     expect(await resolveUsername("owner")).toBe(owner.id)
     expect(await resolveUsername("ghost")).toBeNull()
 
-    await followUserById(pub.id, owner.id)
-    await followUserById(priv.id, owner.id)
+    await requestFollow(accepted.id, owner.id)
+    await acceptFollow(owner.id, accepted.id)
+    await requestFollow(pending.id, owner.id) // still pending
 
     const followers = await getFollowList(owner.id, "followers")
-    expect(followers).toHaveLength(2)
-    const byName = Object.fromEntries(followers.map((f) => [f.displayName, f]))
-    expect(byName.Grace!.username).toBe("pubfan")
-    expect(byName.Alan!.username).toBeNull() // private → not linkable
+    expect(followers.map((f) => f.displayName)).toEqual(["Grace"]) // pending excluded
+    expect(followers[0]!.username).toBe("yes")
   })
 })
