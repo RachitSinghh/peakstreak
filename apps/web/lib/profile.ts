@@ -2,11 +2,14 @@ import { and, eq, sql } from "drizzle-orm"
 
 import { db, schema } from "@/lib/db"
 import { addDays, localDateString } from "@/lib/dates"
+import { getFollowCounts } from "@/lib/follows"
 import { resolveDisplayName } from "@/lib/leaderboard-shared"
 import { computeStreaks } from "@/lib/streaks"
 import type { GraphDay } from "@/components/contribution-graph"
 
 export interface PublicProfile {
+  /** The owner's user id — lets the viewer compute own-vs-other + follow state. */
+  userId: string
   username: string
   displayName: string
   bio: string | null
@@ -15,6 +18,8 @@ export interface PublicProfile {
   longestStreak: number
   playlistsCompleted: number
   totalWatchSeconds: number
+  followerCount: number
+  followingCount: number
   activityDays: GraphDay[]
   today: string
 }
@@ -37,7 +42,7 @@ export async function getPublicProfile(
 
   const today = localDateString(now, user.timezone)
 
-  const [activityRows, playlistsRow, watchRow] = await Promise.all([
+  const [activityRows, playlistsRow, watchRow, followCounts] = await Promise.all([
     // 400 days covers the year heatmap and any realistic current/longest run.
     db
       .select({
@@ -67,11 +72,13 @@ export async function getPublicProfile(
       .select({ seconds: sql<number>`coalesce(sum(${schema.dailyActivity.secondsWatched}), 0)::int` })
       .from(schema.dailyActivity)
       .where(eq(schema.dailyActivity.userId, user.id)),
+    getFollowCounts(user.id),
   ])
 
   const streak = computeStreaks(activityRows, today)
 
   return {
+    userId: user.id,
     username: user.username!,
     displayName: resolveDisplayName(user.displayName, user.name, user.id),
     bio: user.bio,
@@ -80,6 +87,8 @@ export async function getPublicProfile(
     longestStreak: streak.longestStreak,
     playlistsCompleted: playlistsRow[0]?.count ?? 0,
     totalWatchSeconds: watchRow[0]?.seconds ?? 0,
+    followerCount: followCounts.followers,
+    followingCount: followCounts.following,
     activityDays: activityRows,
     today,
   }

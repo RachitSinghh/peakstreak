@@ -15,6 +15,7 @@ export type EventName =
   | "playlist_completed"
   | "feedback_submitted"
   | "leaderboard_viewed"
+  | "user_followed"
 
 /**
  * PS-14: best-effort event tracking into the self-hosted events table.
