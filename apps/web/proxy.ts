@@ -18,7 +18,10 @@ const PUBLIC_PAGES = new Set([
 // Public sections matched by prefix (the page itself + any sub-paths), e.g. the
 // blog index and every /blog/<slug> post. Kept separate from the exact-match
 // set above so a logged-out reader can actually reach them.
-const PUBLIC_PAGE_PREFIXES = ["/blog"]
+// /u/<username> is a public profile (SOC-01). The page itself resolves
+// visibility and shows a generic "not found" for private/unknown users, so no
+// private data leaks even though the route is reachable logged-out.
+const PUBLIC_PAGE_PREFIXES = ["/blog", "/u"]
 
 // These API routes carry their own auth (cron secret, unsubscribe token)
 // or are intentionally public (health, auth handshake, anonymous preview).
