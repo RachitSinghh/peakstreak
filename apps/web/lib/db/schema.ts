@@ -108,6 +108,25 @@ export const passwordResetTokens = pgTable(
   (t) => [index("password_reset_tokens_user_idx").on(t.userId)],
 )
 
+// SOC-02: one-directional follow graph. PK on the pair dedups and covers
+// follower-side lookups; the extra index covers "who follows this user".
+export const follows = pgTable(
+  "follows",
+  {
+    followerId: uuid("follower_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followeeId: uuid("followee_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.followerId, t.followeeId] }),
+    index("follows_followee_idx").on(t.followeeId),
+  ],
+)
+
 // ── Shared YouTube metadata cache (not user-owned) ──────────────
 
 export const playlists = pgTable("playlists", {

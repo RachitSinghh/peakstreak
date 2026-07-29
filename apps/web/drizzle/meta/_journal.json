@@ -99,6 +99,13 @@
       "when": 1785361168893,
       "tag": "0013_curved_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1785362198923,
+      "tag": "0014_rich_centennial",
+      "breakpoints": true
     }
   ]
 }
