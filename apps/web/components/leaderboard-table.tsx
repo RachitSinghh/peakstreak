@@ -8,9 +8,12 @@ import { formatDuration } from "@/lib/pace"
 import {
   LEADERBOARD_METRICS,
   rankBy,
+  shouldNudgeFriends,
   type LeaderboardMetric,
   type LeaderboardRow,
 } from "@/lib/leaderboard-shared"
+
+type Board = "community" | "friends"
 
 function medal(rank: number): string | null {
   return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null
@@ -29,12 +32,57 @@ function cellValue(row: LeaderboardRow, metric: LeaderboardMetric): string {
   }
 }
 
-export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
+export function LeaderboardTable({
+  community,
+  friends,
+  followedCount,
+}: {
+  community: LeaderboardRow[]
+  friends: LeaderboardRow[]
+  followedCount: number
+}) {
+  const [board, setBoard] = useState<Board>("community")
   const [metric, setMetric] = useState<LeaderboardMetric>("videos")
+
+  const nudgeFriends = board === "friends" && shouldNudgeFriends(followedCount)
+  const rows = board === "friends" ? friends : community
   const ranked = rankBy(rows, metric)
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex gap-2">
+        {(["community", "friends"] as const).map((b) => (
+          <button
+            key={b}
+            type="button"
+            onClick={() => setBoard(b)}
+            className={cn(
+              "rounded-lg border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+              board === b
+                ? "border-primary bg-primary/10 text-foreground"
+                : "border-border text-muted-foreground hover:bg-secondary",
+            )}
+          >
+            {b}
+          </button>
+        ))}
+      </div>
+
+      {nudgeFriends && (
+        <div className="border-border bg-card text-muted-foreground rounded-xl border border-dashed p-4 text-sm">
+          Follow at least two people to see a friends ranking. Find learners on the Community
+          board and open their profile to follow them.
+        </div>
+      )}
+
+      {ranked.length === 0 ? (
+        <div className="border-border bg-card text-muted-foreground rounded-xl border border-dashed px-6 py-12 text-center text-sm">
+          {board === "friends"
+            ? "None of the people you follow are on the board yet."
+            : "No one's on the board yet. Complete a video to claim the first spot."}
+        </div>
+      ) : (
+        <>
       <div className="flex flex-wrap gap-2">
         {LEADERBOARD_METRICS.map((m) => (
           <button
@@ -118,6 +166,8 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { Trophy } from "lucide-react"
 
 import { track } from "@/lib/analytics"
 import { requireUserId } from "@/lib/auth"
-import { getLeaderboard } from "@/lib/leaderboard"
+import { getFriendsLeaderboard, getLeaderboard } from "@/lib/leaderboard"
 import { LeaderboardTable } from "@/components/leaderboard-table"
 import { FadeUp } from "@/components/motion/fade-up"
 
@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: "Leaderboard" }
 
 export default async function LeaderboardPage() {
   const userId = await requireUserId()
-  const { rows, currentUserHidden } = await getLeaderboard(userId)
+  const [{ rows, currentUserHidden }, friends] = await Promise.all([
+    getLeaderboard(userId),
+    getFriendsLeaderboard(userId),
+  ])
   void track("leaderboard_viewed", { userId })
 
   return (
@@ -41,21 +44,13 @@ export default async function LeaderboardPage() {
         </FadeUp>
       )}
 
-      {rows.length === 0 ? (
-        <FadeUp delay={0.08}>
-          <div className="border-border bg-card flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-16 text-center">
-            <Trophy className="text-muted-foreground size-8" />
-            <p className="text-sm font-medium">No one&apos;s on the board yet</p>
-            <p className="text-muted-foreground max-w-sm text-sm">
-              Complete a video to claim the first spot.
-            </p>
-          </div>
-        </FadeUp>
-      ) : (
-        <FadeUp delay={0.08}>
-          <LeaderboardTable rows={rows} />
-        </FadeUp>
-      )}
+      <FadeUp delay={0.08}>
+        <LeaderboardTable
+          community={rows}
+          friends={friends.rows}
+          followedCount={friends.followedCount}
+        />
+      </FadeUp>
     </div>
   )
 }

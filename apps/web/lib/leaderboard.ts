@@ -1,4 +1,4 @@
-import { eq, gte, sql } from "drizzle-orm"
+import { and, eq, gte, sql } from "drizzle-orm"
 
 import { db, schema } from "@/lib/db"
 import { addDays, localDateString } from "@/lib/dates"
@@ -24,19 +24,29 @@ function hasActivity(row: LeaderboardRow): boolean {
   return row.videosCompleted > 0 || row.watchSeconds > 0
 }
 
+/** The user fields buildRows needs to turn a person into a leaderboard row. */
+interface RankableUser {
+  id: string
+  name: string | null
+  displayName: string | null
+  username: string | null
+  timezone: string
+}
+
+const RANKABLE_USER_COLUMNS = {
+  id: schema.users.id,
+  name: schema.users.name,
+  displayName: schema.users.displayName,
+  username: schema.users.username,
+  timezone: schema.users.timezone,
+} as const
+
 export async function getLeaderboard(
   currentUserId: string,
   now: Date = new Date(),
 ): Promise<LeaderboardData> {
   const users = await db
-    .select({
-      id: schema.users.id,
-      name: schema.users.name,
-      displayName: schema.users.displayName,
-      username: schema.users.username,
-      timezone: schema.users.timezone,
-      showOnLeaderboard: schema.users.showOnLeaderboard,
-    })
+    .select({ ...RANKABLE_USER_COLUMNS, showOnLeaderboard: schema.users.showOnLeaderboard })
     .from(schema.users)
 
   const currentUserHidden =
@@ -44,6 +54,47 @@ export async function getLeaderboard(
 
   const visible = users.filter((u) => u.showOnLeaderboard)
   if (visible.length === 0) return { rows: [], currentUserHidden }
+
+  const rows = (await buildRows(visible, currentUserId, now)).filter(hasActivity)
+  return { rows, currentUserHidden }
+}
+
+/**
+ * SOC-04: the Friends board — the current user plus everyone they follow
+ * (accepted only). No `showOnLeaderboard` gate: an accepted follow already
+ * grants profile visibility, so the same stats are consented to. Every friend
+ * is shown regardless of activity (that's the point of accountability).
+ */
+export async function getFriendsLeaderboard(
+  currentUserId: string,
+  now: Date = new Date(),
+): Promise<{ rows: LeaderboardRow[]; followedCount: number }> {
+  const [self, followed] = await Promise.all([
+    db.select(RANKABLE_USER_COLUMNS).from(schema.users).where(eq(schema.users.id, currentUserId)),
+    db
+      .select(RANKABLE_USER_COLUMNS)
+      .from(schema.follows)
+      .innerJoin(schema.users, eq(schema.users.id, schema.follows.followeeId))
+      .where(
+        and(
+          eq(schema.follows.followerId, currentUserId),
+          eq(schema.follows.status, "accepted"),
+        ),
+      ),
+  ])
+
+  const rows = await buildRows([...self, ...followed], currentUserId, now)
+  return { rows, followedCount: followed.length }
+}
+
+/** Turn a set of users into leaderboard rows. Aggregates are scanned in full */
+/** and looked up per user; ranking stays client-side via `rankBy`. */
+async function buildRows(
+  people: RankableUser[],
+  currentUserId: string,
+  now: Date,
+): Promise<LeaderboardRow[]> {
+  if (people.length === 0) return []
 
   // Three independent aggregate sweeps, merged in JS by user id. At current
   // scale a full GROUP BY per metric is trivial; revisit if the user table
@@ -104,22 +155,18 @@ export async function getLeaderboard(
     activityBy.set(r.userId, list)
   }
 
-  const rows: LeaderboardRow[] = visible
-    .map((u) => {
-      const today = localDateString(now, u.timezone)
-      const streak = computeStreaks(activityBy.get(u.id) ?? [], today)
-      return {
-        userId: u.id,
-        displayName: resolveDisplayName(u.displayName, u.name, u.id),
-        username: u.username,
-        videosCompleted: videosBy.get(u.id) ?? 0,
-        playlistsCompleted: playlistsBy.get(u.id) ?? 0,
-        watchSeconds: watchBy.get(u.id) ?? 0,
-        currentStreak: streak.currentStreak,
-        isCurrentUser: u.id === currentUserId,
-      }
-    })
-    .filter(hasActivity)
-
-  return { rows, currentUserHidden }
+  return people.map((u) => {
+    const today = localDateString(now, u.timezone)
+    const streak = computeStreaks(activityBy.get(u.id) ?? [], today)
+    return {
+      userId: u.id,
+      displayName: resolveDisplayName(u.displayName, u.name, u.id),
+      username: u.username,
+      videosCompleted: videosBy.get(u.id) ?? 0,
+      playlistsCompleted: playlistsBy.get(u.id) ?? 0,
+      watchSeconds: watchBy.get(u.id) ?? 0,
+      currentStreak: streak.currentStreak,
+      isCurrentUser: u.id === currentUserId,
+    }
+  })
 }

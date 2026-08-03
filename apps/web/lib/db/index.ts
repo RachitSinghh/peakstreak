@@ -1,8 +1,17 @@
+import net from "node:net"
+
 import { drizzle } from "drizzle-orm/node-postgres"
 import { Pool } from "pg"
 
 import { env } from "@/lib/env"
 import * as schema from "./schema"
+
+// Node 20+ enables Happy Eyeballs (`autoSelectFamily`), which abandons each
+// connect attempt after 250ms. Neon's IPv4 endpoint needs ~1-2s to answer and
+// this host has no IPv6 route, so every attempt dies at 250ms and the connect
+// fails with a bogus ETIMEDOUT (surfacing as "Failed query"). Turn it off so
+// Node waits out the IPv4 connect instead of racing itself to death.
+net.setDefaultAutoSelectFamily(false)
 
 const globalForDb = globalThis as unknown as { pgPool?: Pool }
 
