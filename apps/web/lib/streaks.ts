@@ -64,6 +64,26 @@ export function computeStreaks(days: ActivityDay[], today: string): StreakStats 
   }
 }
 
+/**
+ * SOC-07: a group streak is the run of consecutive days on which at least
+ * `threshold` members studied. `dateCounts` maps a local date to that count.
+ * Mirrors `computeStreaks`' today-grace: a quiet *today* doesn't break it.
+ */
+export function computeGroupStreak(
+  dateCounts: Map<string, number>,
+  today: string,
+  threshold: number,
+): number {
+  const meets = (d: string) => (dateCounts.get(d) ?? 0) >= threshold
+  let anchor = meets(today) ? today : addDays(today, -1)
+  let streak = 0
+  while (meets(anchor)) {
+    streak++
+    anchor = addDays(anchor, -1)
+  }
+  return streak
+}
+
 /** One freeze per calendar week (Monday-start), non-stacking. */
 export function freezeAvailableForWeekOf(days: ActivityDay[], date: string): boolean {
   const start = weekStart(date)

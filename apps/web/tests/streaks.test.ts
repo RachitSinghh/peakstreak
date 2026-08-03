@@ -3,12 +3,37 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { db, resetDb, schema, seedUser } from "./helpers"
 
 import {
+  computeGroupStreak,
   computeStreaks,
   freezeAvailableForWeekOf,
   getStreakSummary,
   runStreakMaintenanceForUser,
   type ActivityDay,
 } from "@/lib/streaks"
+
+describe("computeGroupStreak", () => {
+  it("counts consecutive days meeting the threshold, with a today grace", () => {
+    const counts = new Map([
+      ["2026-08-01", 2],
+      ["2026-08-02", 3],
+      ["2026-08-03", 0], // today is quiet — grace, doesn't break
+    ])
+    expect(computeGroupStreak(counts, "2026-08-03", 2)).toBe(2)
+  })
+
+  it("breaks when the threshold is not met", () => {
+    const counts = new Map([
+      ["2026-08-01", 3],
+      ["2026-08-02", 1], // below K=2 → gap
+      ["2026-08-03", 3],
+    ])
+    expect(computeGroupStreak(counts, "2026-08-03", 2)).toBe(1)
+  })
+
+  it("is zero when no day meets the threshold", () => {
+    expect(computeGroupStreak(new Map([["2026-08-03", 1]]), "2026-08-03", 2)).toBe(0)
+  })
+})
 
 function day(date: string, videos = 1, frozen = false): ActivityDay {
   return { activityDate: date, videosCompleted: videos, isFrozen: frozen }

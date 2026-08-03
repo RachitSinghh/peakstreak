@@ -11,8 +11,9 @@ import {
   type GroupSummary,
 } from "@/lib/groups-shared"
 import { resolveDisplayName } from "@/lib/leaderboard-shared"
+import { cloneAndEnroll } from "@/lib/playlist-clone"
 import { ALIAS_MAX, randomSuffix, slugify } from "@/lib/slug"
-import { computeStreaks, type ActivityDay } from "@/lib/streaks"
+import { computeGroupStreak, computeStreaks, type ActivityDay } from "@/lib/streaks"
 
 /**
  * SOC-06: study groups. A capped group with one owner. Member status (streak +
@@ -66,7 +67,7 @@ export async function createGroup(
 export async function joinGroup(userId: string, slug: string): Promise<GroupActionResult> {
   const group = await db.query.studyGroups.findFirst({
     where: eq(schema.studyGroups.slug, slug),
-    columns: { id: true },
+    columns: { id: true, goalPlaylistId: true },
   })
   if (!group) return { error: "Group not found." }
 
@@ -82,7 +83,11 @@ export async function joinGroup(userId: string, slug: string): Promise<GroupActi
   if (existing) return { ok: true, slug }
   if ((countRow[0]?.n ?? 0) >= GROUP_SIZE_CAP) return { error: "This group is full." }
 
-  await db.insert(schema.groupMembers).values({ groupId: group.id, userId, role: "member" })
+  // SOC-07: a late joiner gets their own clone of the group goal to track.
+  const goalEnrollmentId = group.goalPlaylistId
+    ? await cloneAndEnroll(userId, group.goalPlaylistId)
+    : null
+  await db.insert(schema.groupMembers).values({ groupId: group.id, userId, role: "member", goalEnrollmentId })
   await track("group_joined", { userId, properties: { groupId: group.id } })
   return { ok: true, slug }
 }
@@ -139,6 +144,64 @@ export async function deleteGroup(ownerId: string, slug: string): Promise<GroupA
   return { ok: true }
 }
 
+/**
+ * SOC-07: owner attaches one of their own playlists as the group goal. Every
+ * current member (owner included) gets their own editable clone to track, so
+ * the group starts fresh together. Set-once for v1.
+ */
+export async function setGroupGoal(
+  ownerId: string,
+  slug: string,
+  sourcePlaylistId: string,
+  threshold = 1,
+): Promise<GroupActionResult> {
+  const group = await db.query.studyGroups.findFirst({
+    where: eq(schema.studyGroups.slug, slug),
+    columns: { id: true, ownerId: true, goalPlaylistId: true },
+  })
+  if (!group) return { error: "Group not found." }
+  if (group.ownerId !== ownerId) return { error: "Only the owner can set the group goal." }
+  if (group.goalPlaylistId) return { error: "This group already has a goal." }
+
+  // The owner must be enrolled in the source, and it must have videos.
+  const source = await db
+    .select({ videoCount: schema.playlists.videoCount })
+    .from(schema.userPlaylists)
+    .innerJoin(schema.playlists, eq(schema.playlists.id, schema.userPlaylists.playlistId))
+    .where(
+      and(
+        eq(schema.userPlaylists.userId, ownerId),
+        eq(schema.userPlaylists.playlistId, sourcePlaylistId),
+      ),
+    )
+    .then((r) => r[0])
+  if (!source) return { error: "Pick one of your own playlists." }
+  if (source.videoCount === 0) return { error: "That playlist has no videos yet." }
+
+  const members = await db
+    .select({ userId: schema.groupMembers.userId })
+    .from(schema.groupMembers)
+    .where(eq(schema.groupMembers.groupId, group.id))
+
+  const safeThreshold = Math.max(1, Math.min(threshold, members.length))
+  await db
+    .update(schema.studyGroups)
+    .set({ goalPlaylistId: sourcePlaylistId, goalStreakThreshold: safeThreshold })
+    .where(eq(schema.studyGroups.id, group.id))
+
+  // ponytail: clone serially — bounded by GROUP_SIZE_CAP (20), not worth batching.
+  for (const m of members) {
+    const goalEnrollmentId = await cloneAndEnroll(m.userId, sourcePlaylistId)
+    await db
+      .update(schema.groupMembers)
+      .set({ goalEnrollmentId })
+      .where(and(eq(schema.groupMembers.groupId, group.id), eq(schema.groupMembers.userId, m.userId)))
+  }
+
+  await track("group_goal_set", { userId: ownerId, properties: { groupId: group.id, playlistId: sourcePlaylistId } })
+  return { ok: true, slug }
+}
+
 /** Groups the user belongs to, with member counts. */
 export async function getMyGroups(userId: string): Promise<GroupSummary[]> {
   const rows = await db
@@ -183,6 +246,7 @@ export async function getGroupPage(
       image: schema.users.image,
       timezone: schema.users.timezone,
       role: schema.groupMembers.role,
+      goalEnrollmentId: schema.groupMembers.goalEnrollmentId,
     })
     .from(schema.groupMembers)
     .innerJoin(schema.users, eq(schema.users.id, schema.groupMembers.userId))
@@ -199,11 +263,19 @@ export async function getGroupPage(
     isFull: memberCount >= GROUP_SIZE_CAP,
     viewerRole,
   }
-  if (!viewerRole) return { ...base, members: [] } // non-member: no status leak
+  if (!viewerRole) {
+    // Non-member: no status leak.
+    return { ...base, members: [], goal: null, ownerPlaylistOptions: [] }
+  }
 
-  const status = await membersStatus(
+  const { status, dateCounts } = await membersStatus(
     memberRows.map((m) => ({ id: m.userId, timezone: m.timezone })),
     now,
+  )
+
+  // SOC-07: per-member completed counts on the goal, in one query.
+  const goalCompleted = await goalCompletedCounts(
+    memberRows.map((m) => m.goalEnrollmentId).filter((id): id is string => id !== null),
   )
   const members: GroupMemberStatus[] = memberRows
     .map((m) => ({
@@ -214,20 +286,81 @@ export async function getGroupPage(
       role: m.role,
       currentStreak: status.get(m.userId)?.currentStreak ?? 0,
       studiedToday: status.get(m.userId)?.studiedToday ?? false,
+      goalCompletedCount: m.goalEnrollmentId ? goalCompleted.get(m.goalEnrollmentId) ?? 0 : 0,
     }))
     // Owner first, then most-active.
     .sort((a, b) => (b.role === "owner" ? 1 : 0) - (a.role === "owner" ? 1 : 0) || b.currentStreak - a.currentStreak)
 
-  return { ...base, members }
+  let goal: GroupPage["goal"] = null
+  if (group.goalPlaylistId) {
+    const playlist = await db.query.playlists.findFirst({
+      where: eq(schema.playlists.id, group.goalPlaylistId),
+      columns: { title: true, videoCount: true },
+    })
+    if (playlist) {
+      const videoCount = playlist.videoCount
+      const avgCompletionPct =
+        videoCount > 0 && members.length > 0
+          ? Math.round(
+              (members.reduce((s, m) => s + Math.min(m.goalCompletedCount, videoCount) / videoCount, 0) /
+                members.length) *
+                100,
+            )
+          : 0
+      // ponytail: group "today" anchors to the owner's timezone.
+      const ownerTz = memberRows.find((m) => m.role === "owner")?.timezone ?? "UTC"
+      goal = {
+        title: playlist.title,
+        videoCount,
+        streakThreshold: group.goalStreakThreshold,
+        groupStreak: computeGroupStreak(dateCounts, localDateString(now, ownerTz), group.goalStreakThreshold),
+        avgCompletionPct,
+      }
+    }
+  }
+
+  const ownerPlaylistOptions =
+    viewerRole === "owner" && !group.goalPlaylistId ? await ownerPlaylists(viewerId) : []
+
+  return { ...base, members, goal, ownerPlaylistOptions }
 }
 
-/** Streak + studied-today for a set of members, in one activity sweep. */
+/** The owner's active playlists, offered as goal candidates. */
+async function ownerPlaylists(ownerId: string): Promise<{ playlistId: string; title: string }[]> {
+  return db
+    .select({ playlistId: schema.playlists.id, title: schema.playlists.title })
+    .from(schema.userPlaylists)
+    .innerJoin(schema.playlists, eq(schema.playlists.id, schema.userPlaylists.playlistId))
+    .where(and(eq(schema.userPlaylists.userId, ownerId), eq(schema.userPlaylists.status, "active")))
+}
+
+/** Completed-video counts keyed by enrollment id, in one query. */
+async function goalCompletedCounts(enrollmentIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>()
+  if (enrollmentIds.length === 0) return out
+  const rows = await db
+    .select({
+      enrollmentId: schema.videoProgress.userPlaylistId,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(schema.videoProgress)
+    .where(and(inArray(schema.videoProgress.userPlaylistId, enrollmentIds), eq(schema.videoProgress.isCompleted, true)))
+    .groupBy(schema.videoProgress.userPlaylistId)
+  for (const r of rows) out.set(r.enrollmentId, r.n)
+  return out
+}
+
+/** Per-member streak/status plus the per-date study counts for the group streak. */
 async function membersStatus(
   members: { id: string; timezone: string }[],
   now: Date,
-): Promise<Map<string, { currentStreak: number; studiedToday: boolean }>> {
-  const out = new Map<string, { currentStreak: number; studiedToday: boolean }>()
-  if (members.length === 0) return out
+): Promise<{
+  status: Map<string, { currentStreak: number; studiedToday: boolean }>
+  dateCounts: Map<string, number>
+}> {
+  const status = new Map<string, { currentStreak: number; studiedToday: boolean }>()
+  const dateCounts = new Map<string, number>()
+  if (members.length === 0) return { status, dateCounts }
 
   const ids = members.map((m) => m.id)
   // 400 days covers any realistic current-streak run; scoped to these members.
@@ -249,6 +382,8 @@ async function membersStatus(
     const list = byUser.get(r.userId) ?? []
     list.push({ activityDate: r.activityDate, videosCompleted: r.videosCompleted, isFrozen: r.isFrozen })
     byUser.set(r.userId, list)
+    // One member per (user, date) — count studying members per date for the group streak.
+    if (r.videosCompleted > 0) dateCounts.set(r.activityDate, (dateCounts.get(r.activityDate) ?? 0) + 1)
   }
 
   for (const m of members) {
@@ -256,7 +391,7 @@ async function membersStatus(
     const days = byUser.get(m.id) ?? []
     const streak = computeStreaks(days, today)
     const studiedToday = days.some((d) => d.activityDate === today && d.videosCompleted > 0)
-    out.set(m.id, { currentStreak: streak.currentStreak, studiedToday })
+    status.set(m.id, { currentStreak: streak.currentStreak, studiedToday })
   }
-  return out
+  return { status, dateCounts }
 }

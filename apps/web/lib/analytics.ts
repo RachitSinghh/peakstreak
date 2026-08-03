@@ -24,6 +24,7 @@ export type EventName =
   | "group_created"
   | "group_joined"
   | "group_left"
+  | "group_goal_set"
   | "videos_synced_from_history"
 
 /**
