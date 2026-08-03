@@ -12,6 +12,7 @@ import { PlaylistCard } from "@/components/playlist-card"
 import { StreakStrip } from "@/components/streak-strip"
 import { NudgeInbox } from "@/components/nudge-inbox"
 import { PartnerCard } from "@/components/partner-card"
+import { WatchHistorySync } from "@/components/watch-history-sync"
 import { FadeUp } from "@/components/motion/fade-up"
 
 export const metadata: Metadata = { title: "Dashboard" }
@@ -51,6 +52,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <WatchHistorySync />
       <FadeUp>
         <StreakStrip streak={streak} />
       </FadeUp>
