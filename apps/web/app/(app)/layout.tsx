@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { ListTodo, Trophy } from "lucide-react"
+import { ListTodo, Trophy, Users } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 
@@ -38,6 +38,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             >
               <Trophy className="text-primary size-4" />
               <span className="hidden sm:inline">Leaderboard</span>
+            </Link>
+            <Link
+              href="/groups"
+              className="text-foreground hover:bg-secondary inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors"
+            >
+              <Users className="text-primary size-4" />
+              <span className="hidden sm:inline">Groups</span>
             </Link>
           </div>
           <div className="flex items-center gap-3">

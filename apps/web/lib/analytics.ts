@@ -21,6 +21,9 @@ export type EventName =
   | "partner_requested"
   | "partner_accepted"
   | "partner_ended"
+  | "group_created"
+  | "group_joined"
+  | "group_left"
 
 /**
  * PS-14: best-effort event tracking into the self-hosted events table.
