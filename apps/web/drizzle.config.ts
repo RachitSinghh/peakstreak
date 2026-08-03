@@ -1,6 +1,14 @@
+import net from "node:net"
+
 import "dotenv/config"
 import { config } from "dotenv"
 import { defineConfig } from "drizzle-kit"
+
+// drizzle-kit runs in its own process without lib/db, so it misses the Happy
+// Eyeballs fix there. Node 20+ abandons each connect attempt after 250ms;
+// Neon's IPv4 endpoint needs longer, so migrate would hang then ETIMEDOUT.
+// Disable the autoSelect race here too so `db:migrate` can connect.
+net.setDefaultAutoSelectFamily(false)
 
 config({ path: ".env.local" })
 

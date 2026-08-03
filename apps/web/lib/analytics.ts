@@ -17,6 +17,10 @@ export type EventName =
   | "leaderboard_viewed"
   | "follow_requested"
   | "follow_accepted"
+  | "nudge_sent"
+  | "partner_requested"
+  | "partner_accepted"
+  | "partner_ended"
 
 /**
  * PS-14: best-effort event tracking into the self-hosted events table.

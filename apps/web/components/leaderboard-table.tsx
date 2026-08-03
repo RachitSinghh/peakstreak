@@ -5,6 +5,7 @@ import Link from "next/link"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { formatDuration } from "@/lib/pace"
+import { NudgeButton } from "@/components/nudge-button"
 import {
   LEADERBOARD_METRICS,
   rankBy,
@@ -144,6 +145,11 @@ export function LeaderboardTable({
                     {row.isCurrentUser && (
                       <span className="bg-primary/15 text-primary ml-2 rounded px-1.5 py-0.5 text-xs">
                         You
+                      </span>
+                    )}
+                    {board === "friends" && !row.isCurrentUser && (
+                      <span className="ml-2 inline-block align-middle">
+                        <NudgeButton toUserId={row.userId} variant="ghost" />
                       </span>
                     )}
                   </td>

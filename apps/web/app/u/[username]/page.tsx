@@ -6,9 +6,11 @@ import { Lock } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 
 import { FollowButton } from "@/components/follow-button"
+import { PartnerButton } from "@/components/partner-button"
 import { ProfileView } from "@/components/profile-view"
 import { currentUserId } from "@/lib/auth"
 import { canViewProfile, getFollowState } from "@/lib/follows"
+import { getPartnerState } from "@/lib/partnerships"
 import { getFullProfile, getProfileIdentity } from "@/lib/profile"
 
 // Profiles are never public — always keep them out of search indexes.
@@ -47,9 +49,10 @@ export default async function ProfilePage({
   const viewerId = await currentUserId()
   if (viewerId === identity.userId) redirect("/profile")
 
-  const [canView, followState] = await Promise.all([
+  const [canView, followState, partnerState] = await Promise.all([
     viewerId ? canViewProfile(viewerId, identity.userId) : Promise.resolve(false),
     viewerId ? getFollowState(viewerId, identity.userId) : Promise.resolve("none" as const),
+    viewerId ? getPartnerState(viewerId, identity.userId) : Promise.resolve("none" as const),
   ])
 
   // Reachable by username when claimed, else by user id.
@@ -94,7 +97,10 @@ export default async function ProfilePage({
           <span className="text-foreground font-semibold">{profile.followingCount}</span> following
         </Link>
       </div>
-      {followButton}
+      <div className="flex items-center gap-2">
+        {followButton}
+        <PartnerButton targetId={identity.userId} initialState={partnerState} />
+      </div>
     </div>
   )
 

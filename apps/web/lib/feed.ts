@@ -17,6 +17,8 @@ export interface FeedItem {
   kind: FeedKind
   /** ISO timestamp of the activity. */
   ts: string
+  /** The actor's user id — lets the feed row nudge them (SOC-08). */
+  userId: string
   username: string
   displayName: string
   image: string | null
@@ -81,6 +83,7 @@ export async function getActivityFeed(
   const items = (feed.rows as unknown as FeedRow[]).map((r) => ({
     kind: r.kind,
     ts: typeof r.ts === "string" ? r.ts : new Date(r.ts).toISOString(),
+    userId: r.owner_id,
     username: r.username,
     displayName: resolveDisplayName(r.display_name, r.name, r.owner_id),
     image: r.image,
