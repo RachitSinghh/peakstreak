@@ -24,6 +24,7 @@ export type EventName =
   | "group_created"
   | "group_joined"
   | "group_left"
+  | "videos_synced_from_history"
 
 /**
  * PS-14: best-effort event tracking into the self-hosted events table.
