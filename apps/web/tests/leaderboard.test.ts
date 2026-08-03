@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { rankBy, resolveDisplayName, type LeaderboardRow } from "@/lib/leaderboard-shared"
+import {
+  rankBy,
+  resolveDisplayName,
+  shouldNudgeFriends,
+  type LeaderboardRow,
+} from "@/lib/leaderboard-shared"
 
 function row(over: Partial<LeaderboardRow> & { userId: string }): LeaderboardRow {
   return {
@@ -53,5 +58,14 @@ describe("rankBy (pure)", () => {
     const before = rows.map((r) => r.userId)
     rankBy(rows, "streak")
     expect(rows.map((r) => r.userId)).toEqual(before)
+  })
+})
+
+describe("shouldNudgeFriends (pure)", () => {
+  it("nudges until the user follows at least two people", () => {
+    expect(shouldNudgeFriends(0)).toBe(true)
+    expect(shouldNudgeFriends(1)).toBe(true)
+    expect(shouldNudgeFriends(2)).toBe(false)
+    expect(shouldNudgeFriends(10)).toBe(false)
   })
 })

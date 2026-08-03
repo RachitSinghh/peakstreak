@@ -48,6 +48,11 @@ export function resolveDisplayName(
   return `Learner #${userId.slice(0, 4)}`
 }
 
+/** Friends board is too small to be a ranking until you follow at least 2 people. */
+export function shouldNudgeFriends(followedCount: number): boolean {
+  return followedCount < 2
+}
+
 /** Sort a copy of the rows by the given metric, highest first. */
 export function rankBy(rows: LeaderboardRow[], metric: LeaderboardMetric): LeaderboardRow[] {
   const field = LEADERBOARD_METRICS.find((m) => m.key === metric)!.field
