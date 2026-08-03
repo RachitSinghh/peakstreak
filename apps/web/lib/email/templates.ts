@@ -60,6 +60,55 @@ export function reminderEmail(input: ReminderTemplateInput) {
   return { subject, html, text }
 }
 
+export interface NudgeTemplateInput {
+  name: string | null
+  fromName: string
+  /** The full one-line message, e.g. "Ada is cheering you on — keep going! 💪". */
+  message: string
+  appUrl: string
+  unsubscribeUrl: string
+}
+
+/** SOC-08: a short encouragement from a friend. One CTA back into the app. */
+export function nudgeEmail(input: NudgeTemplateInput) {
+  const firstName = input.name?.split(" ")[0] ?? "there"
+  const subject = `${input.fromName} sent you a nudge 👋`
+
+  const text = [
+    `Hey ${firstName},`,
+    ``,
+    input.message,
+    ``,
+    `Keep it going: ${input.appUrl}/dashboard`,
+    ``,
+    `— PeakStreak`,
+    ``,
+    `Unsubscribe: ${input.unsubscribeUrl}`,
+  ].join("\n")
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#010102;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
+      <p style="color:#f7f8f8;font-size:16px;font-weight:600;margin:0 0 4px;">Peak<span style="color:#5e6ad2;">Streak</span></p>
+      <h1 style="color:#f7f8f8;font-size:20px;margin:24px 0 8px;">${escapeHtml(input.fromName)} sent you a nudge 👋</h1>
+      <p style="color:#8a8f98;font-size:14px;line-height:1.6;margin:0 0 24px;">
+        ${escapeHtml(input.message)}
+      </p>
+      <a href="${input.appUrl}/dashboard"
+         style="display:inline-block;background:#5e6ad2;color:#ffffff;text-decoration:none;font-size:14px;font-weight:500;padding:10px 20px;border-radius:8px;">
+        Keep your streak going
+      </a>
+      <p style="color:#62666d;font-size:12px;margin:32px 0 0;">
+        Don't want these? <a href="${input.unsubscribeUrl}" style="color:#8a8f98;">Unsubscribe</a>.
+      </p>
+    </div>
+  </body>
+</html>`
+
+  return { subject, html, text }
+}
+
 export interface PasswordResetTemplateInput {
   name: string | null
   resetUrl: string

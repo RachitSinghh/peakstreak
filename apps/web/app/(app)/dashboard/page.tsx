@@ -6,8 +6,12 @@ import { Button } from "@workspace/ui/components/button"
 
 import { requireUserId } from "@/lib/auth"
 import { getDashboard, type DashboardEnrollment } from "@/lib/dashboard"
+import { getUnseenNudges } from "@/lib/nudges"
+import { getPartnerCard } from "@/lib/partnerships"
 import { PlaylistCard } from "@/components/playlist-card"
 import { StreakStrip } from "@/components/streak-strip"
+import { NudgeInbox } from "@/components/nudge-inbox"
+import { PartnerCard } from "@/components/partner-card"
 import { FadeUp } from "@/components/motion/fade-up"
 
 export const metadata: Metadata = { title: "Dashboard" }
@@ -36,7 +40,11 @@ function toCardProps(e: DashboardEnrollment) {
 
 export default async function DashboardPage() {
   const userId = await requireUserId()
-  const { active, completed, streak } = await getDashboard(userId)
+  const [{ active, completed, streak }, nudges, partnerCard] = await Promise.all([
+    getDashboard(userId),
+    getUnseenNudges(userId),
+    getPartnerCard(userId),
+  ])
 
   // Archived playlists live on their own page, so they don't count here.
   const isEmpty = active.length === 0 && completed.length === 0
@@ -45,6 +53,16 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6">
       <FadeUp>
         <StreakStrip streak={streak} />
+      </FadeUp>
+
+      {nudges.length > 0 && (
+        <FadeUp delay={0.04}>
+          <NudgeInbox nudges={nudges} />
+        </FadeUp>
+      )}
+
+      <FadeUp delay={0.06}>
+        <PartnerCard card={partnerCard} />
       </FadeUp>
 
       {isEmpty ? (

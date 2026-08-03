@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/av
 
 import { timeAgo } from "@/lib/dates"
 import type { FeedItem } from "@/lib/feed"
+import { NudgeButton } from "@/components/nudge-button"
 
 function actionText(item: FeedItem): React.ReactNode {
   switch (item.kind) {
@@ -62,6 +63,9 @@ export function ActivityFeed({
                 {actionText(item)}
               </p>
               <span className="text-muted-foreground shrink-0 text-xs">{timeAgo(new Date(item.ts))}</span>
+              <div className="shrink-0">
+                <NudgeButton toUserId={item.userId} variant="ghost" />
+              </div>
             </li>
           ))}
         </ul>

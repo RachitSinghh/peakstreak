@@ -129,6 +129,51 @@ export const follows = pgTable(
   ],
 )
 
+// SOC-08: one-tap prewritten encouragement between users. Also the in-app
+// notification store — an unseen row (seen_at null) is a pending notification
+// shown on the recipient's dashboard, marked seen on view.
+export const nudges = pgTable(
+  "nudges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fromUserId: uuid("from_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    toUserId: uuid("to_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["cheer", "streak"] }).notNull().default("cheer"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    seenAt: timestamp("seen_at", { withTimezone: true }),
+  },
+  (t) => [index("nudges_recipient_idx").on(t.toUserId, t.seenAt)],
+)
+
+// SOC-05: a mutual 1:1 accountability partnership on the follow model. Created
+// pending (a request), accepted by the addressee; decline/end deletes the row.
+// Exactly one accepted partnership per user is enforced in app code at accept
+// time. ponytail: not race-proof — add a partial unique index if it matters.
+export const partnerships = pgTable(
+  "partnerships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requesterId: uuid("requester_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    addresseeId: uuid("addressee_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["pending", "accepted"] })
+      .notNull()
+      .default("pending"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("partnerships_pair_idx").on(t.requesterId, t.addresseeId),
+    index("partnerships_addressee_idx").on(t.addresseeId),
+  ],
+)
+
 // ── Shared YouTube metadata cache (not user-owned) ──────────────
 
 export const playlists = pgTable("playlists", {
