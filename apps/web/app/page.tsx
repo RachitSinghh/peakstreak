@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { Hero } from "@/components/landing/hero"
 import { Features } from "@/components/landing/features"
 import { StreakBand } from "@/components/landing/streak-band"
+import { TaglineReveal } from "@/components/landing/tagline-reveal"
 import { Testimonials } from "@/components/landing/testimonials"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
@@ -50,19 +51,34 @@ export default function LandingPage() {
         <Hero />
         <Features />
         <StreakBand />
+        <TaglineReveal />
         <Testimonials />
 
         {/* closing CTA */}
-        <section className="mx-auto max-w-5xl px-4 pb-28 text-center">
-          <div className="border-border bg-card/60 relative overflow-hidden rounded-3xl border px-6 py-16">
-            <h2 className="mx-auto max-w-xl text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-              Stop saving playlists. Start finishing them.
-            </h2>
-            <div className="mt-8 flex justify-center">
-              <Button size="lg" render={<Link href="/signup" />}>
-                Create your free account
-                <ArrowRight className="size-4" />
-              </Button>
+        <section className="mx-auto max-w-5xl px-4 pt-20 pb-28 text-center sm:pt-28">
+          <div className="border-border bg-card/60 relative overflow-hidden rounded-3xl border px-6 py-20">
+            {/* lavender wash echoing the hero glow — the last premium beat */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(70% 120% at 50% 0%, rgba(94,106,210,0.16), transparent 60%)",
+              }}
+            />
+            <div className="relative">
+              <h2 className="mx-auto max-w-xl bg-gradient-to-r from-white to-[#9b9b9b] bg-clip-text text-2xl font-semibold tracking-tight text-balance text-transparent sm:text-3xl">
+                Stop saving playlists. Start finishing them.
+              </h2>
+              <div className="mt-8 flex justify-center">
+                <Button size="lg" render={<Link href="/signup" />}>
+                  Create your free account
+                  <ArrowRight className="size-4" />
+                </Button>
+              </div>
+              <p className="text-muted-foreground mt-4 font-mono text-[11px]">
+                Free forever · no card · start in under a minute
+              </p>
             </div>
           </div>
         </section>

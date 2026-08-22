@@ -23,6 +23,18 @@ export interface GroupMemberStatus {
   role: "owner" | "member"
   currentStreak: number
   studiedToday: boolean
+  /** Videos this member has completed on the group goal (0 when no goal). */
+  goalCompletedCount: number
+}
+
+/** SOC-07: the shared goal, present only when an owner has set one. */
+export interface GroupGoal {
+  title: string
+  videoCount: number
+  streakThreshold: number
+  groupStreak: number
+  /** Average completion across members, 0–100. */
+  avgCompletionPct: number
 }
 
 export interface GroupPage {
@@ -34,6 +46,9 @@ export interface GroupPage {
   viewerRole: GroupRole
   /** Populated only when the viewer is a member (privacy). */
   members: GroupMemberStatus[]
+  goal: GroupGoal | null
+  /** Owner's playlists to pick a goal from — only when viewer is owner and no goal yet. */
+  ownerPlaylistOptions: { playlistId: string; title: string }[]
 }
 
 export type GroupActionResult = { ok: true; slug?: string } | { error: string }

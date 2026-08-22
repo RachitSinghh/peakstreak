@@ -184,6 +184,10 @@ export const studyGroups = pgTable("study_groups", {
   ownerId: uuid("owner_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  // SOC-07: the source playlist cloned per-member as the group goal (null = no goal).
+  goalPlaylistId: uuid("goal_playlist_id").references(() => playlists.id, { onDelete: "set null" }),
+  // Min members who must study each day to keep the group streak alive.
+  goalStreakThreshold: integer("goal_streak_threshold").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
@@ -197,6 +201,10 @@ export const groupMembers = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["owner", "member"] }).notNull().default("member"),
+    // SOC-07: this member's personal clone of the group goal (null until a goal is set).
+    goalEnrollmentId: uuid("goal_enrollment_id").references(() => userPlaylists.id, {
+      onDelete: "set null",
+    }),
     joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

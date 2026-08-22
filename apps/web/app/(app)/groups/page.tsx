@@ -38,7 +38,7 @@ export default async function GroupsPage() {
             shared.
           </p>
         ) : (
-          <ul className="border-border bg-card divide-border/60 divide-y rounded-xl border">
+          <ul className="border-border bg-card divide-border/60 divide-y overflow-hidden rounded-xl border">
             {groups.map((g) => (
               <li key={g.slug}>
                 <Link

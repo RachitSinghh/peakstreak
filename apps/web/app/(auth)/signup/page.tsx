@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { auth } from "@/lib/auth"
-import { googleOAuthEnabled } from "@/lib/env"
+import { githubOAuthEnabled, googleOAuthEnabled } from "@/lib/env"
 import { AuthForm } from "@/components/auth-form"
 
 export const metadata: Metadata = { title: "Sign up" }
@@ -25,6 +25,7 @@ export default async function SignupPage({
       <AuthForm
         mode="signup"
         googleEnabled={googleOAuthEnabled()}
+        githubEnabled={githubOAuthEnabled()}
         callbackUrl={callbackUrl?.startsWith("/") ? callbackUrl : "/dashboard"}
       />
     </>

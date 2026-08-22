@@ -9,9 +9,8 @@ import { track } from "@/lib/analytics"
 import { requireUserId } from "@/lib/auth"
 import { requireEnrollment } from "@/lib/dashboard"
 import { db, schema } from "@/lib/db"
-import { localDateString } from "@/lib/dates"
-import { estimateDays, finishDate, isValidPlaybackSpeed, validatePace, type Pace } from "@/lib/pace"
-import { getUser } from "@/lib/user"
+import { isValidPlaybackSpeed, validatePace, type Pace } from "@/lib/pace"
+import { clonePlaylistRow, upsertEnrollment } from "@/lib/playlist-clone"
 import { fetchVideosByIds } from "@/lib/youtube/client"
 import { createCustomPlaylist, getOrSyncPlaylist } from "@/lib/youtube/cache"
 import { parsePlaylistInput, parseVideoInput } from "@/lib/youtube/url"
@@ -35,61 +34,7 @@ async function enrollUserInPlaylist(
   pace: Pace,
   playbackSpeed: number,
 ): Promise<never> {
-  const user = await getUser(userId)
-  const today = localDateString(new Date(), user.timezone)
-  const days = estimateDays({
-    remainingSeconds: playlist.totalDurationSeconds,
-    remainingVideos: playlist.videoCount,
-    pace,
-    playbackSpeed,
-  })
-  const targetFinishDate = finishDate(today, days)
-
-  const existing = await db.query.userPlaylists.findFirst({
-    where: and(
-      eq(schema.userPlaylists.userId, userId),
-      eq(schema.userPlaylists.playlistId, playlist.id),
-    ),
-  })
-
-  if (existing) {
-    // Re-adding an archived (or even active) playlist updates the plan
-    // rather than erroring — progress rows are keyed to this enrollment
-    // and survive untouched.
-    await db
-      .update(schema.userPlaylists)
-      .set({
-        paceType: pace.type,
-        paceValue: pace.value,
-        playbackSpeed: playbackSpeed.toFixed(1),
-        status: existing.status === "completed" ? "completed" : "active",
-        targetFinishDate,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.userPlaylists.id, existing.id))
-  } else {
-    await db.insert(schema.userPlaylists).values({
-      userId,
-      playlistId: playlist.id,
-      paceType: pace.type,
-      paceValue: pace.value,
-      playbackSpeed: playbackSpeed.toFixed(1),
-      targetFinishDate,
-    })
-    track("playlist_enrolled", {
-      userId,
-      properties: { playlistId: playlist.id, paceType: pace.type, paceValue: pace.value, playbackSpeed },
-    })
-  }
-
-  // First playlist added = activated (feeds the activation metric).
-  if (!user.onboardedAt) {
-    await db
-      .update(schema.users)
-      .set({ onboardedAt: new Date() })
-      .where(eq(schema.users.id, userId))
-  }
-
+  await upsertEnrollment(userId, playlist, pace, playbackSpeed)
   redirect("/dashboard")
 }
 
@@ -433,38 +378,7 @@ export async function cloneSharedPlaylist(alias: string): Promise<EnrollState> {
   if (!source) return { error: "This link is no longer valid." }
   if (source.videoCount === 0) return { error: "This playlist has no videos to save." }
 
-  const clone = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(schema.playlists)
-      .values({
-        youtubePlaylistId: null,
-        title: source.title,
-        channelTitle: source.channelTitle,
-        thumbnailUrl: source.thumbnailUrl,
-        videoCount: source.videoCount,
-        totalDurationSeconds: source.totalDurationSeconds,
-        unavailableCount: source.unavailableCount,
-        unembeddableCount: source.unembeddableCount,
-        lastSyncedAt: new Date(),
-        syncStatus: "ok",
-      })
-      .returning()
-
-    const srcVideos = await tx
-      .select({
-        videoId: schema.playlistVideos.videoId,
-        position: schema.playlistVideos.position,
-      })
-      .from(schema.playlistVideos)
-      .where(eq(schema.playlistVideos.playlistId, source.id))
-
-    if (srcVideos.length > 0) {
-      await tx
-        .insert(schema.playlistVideos)
-        .values(srcVideos.map((v) => ({ playlistId: row!.id, ...v })))
-    }
-    return row!
-  })
+  const clone = await clonePlaylistRow(source)
 
   // ponytail: default pace 30 min/day, 1.0x — the clone is fully editable, so
   // the user retunes it after. Adds no picker UI to the save flow.

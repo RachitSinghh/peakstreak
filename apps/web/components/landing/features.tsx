@@ -27,7 +27,7 @@ const PHASES = [
 
 export function Features() {
   return (
-    <Reveal as="section" className="mx-auto max-w-5xl px-4 py-20 sm:py-28">
+    <Reveal as="section" className="mx-auto max-w-5xl px-4 pb-20 sm:pb-28">
       <h2 className="ps-reveal mx-auto max-w-2xl text-center text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
         A finite plan, start to finish.
       </h2>

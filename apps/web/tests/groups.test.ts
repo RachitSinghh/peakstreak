@@ -1,6 +1,7 @@
+import { and, eq } from "drizzle-orm"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { resetDb, seedUser } from "./helpers"
+import { db, resetDb, schema, seedEnrollment, seedUser } from "./helpers"
 
 import {
   GROUP_SIZE_CAP,
@@ -10,7 +11,24 @@ import {
   joinGroup,
   leaveGroup,
   removeMember,
+  setGroupGoal,
 } from "@/lib/groups"
+
+/** The stored clone-enrollment id for a member, or null. */
+async function memberGoalEnrollment(slug: string, userId: string): Promise<string | null> {
+  const group = await db.query.studyGroups.findFirst({
+    where: eq(schema.studyGroups.slug, slug),
+    columns: { id: true },
+  })
+  const row = await db.query.groupMembers.findFirst({
+    where: and(
+      eq(schema.groupMembers.groupId, group!.id),
+      eq(schema.groupMembers.userId, userId),
+    ),
+    columns: { goalEnrollmentId: true },
+  })
+  return row?.goalEnrollmentId ?? null
+}
 
 async function newGroup(ownerName = "Owner") {
   const owner = await seedUser({ name: ownerName })
@@ -98,5 +116,70 @@ describe("study groups", () => {
     })
     expect(await deleteGroup(owner.id, slug)).toEqual({ ok: true })
     expect(await getGroupPage(slug, owner.id)).toBeNull()
+  })
+
+  it("owner sets a goal and every member gets their own distinct clone", async () => {
+    const { owner, slug } = await newGroup()
+    const member = await seedUser()
+    await joinGroup(member.id, slug)
+
+    const source = await seedEnrollment({ userId: owner.id, videoCount: 3 })
+    expect(await setGroupGoal(owner.id, slug, source.playlist.id)).toMatchObject({ ok: true })
+
+    const page = await getGroupPage(slug, owner.id)
+    expect(page?.goal).toMatchObject({ videoCount: 3, groupStreak: 0, avgCompletionPct: 0 })
+
+    const ownerClone = await memberGoalEnrollment(slug, owner.id)
+    const memberClone = await memberGoalEnrollment(slug, member.id)
+    expect(ownerClone).toBeTruthy()
+    expect(memberClone).toBeTruthy()
+    expect(ownerClone).not.toBe(memberClone) // each member tracks their own copy
+  })
+
+  it("a late joiner gets a clone of an already-set goal", async () => {
+    const { owner, slug } = await newGroup()
+    const source = await seedEnrollment({ userId: owner.id, videoCount: 2 })
+    await setGroupGoal(owner.id, slug, source.playlist.id)
+
+    const latecomer = await seedUser()
+    await joinGroup(latecomer.id, slug)
+    expect(await memberGoalEnrollment(slug, latecomer.id)).toBeTruthy()
+  })
+
+  it("averages member completion into collective progress", async () => {
+    const { owner, slug } = await newGroup()
+    const member = await seedUser()
+    await joinGroup(member.id, slug)
+    const source = await seedEnrollment({ userId: owner.id, videoCount: 4 })
+    await setGroupGoal(owner.id, slug, source.playlist.id)
+
+    // Owner completes 2 of 4 on their clone; member completes none. Avg = (50 + 0) / 2 = 25.
+    const ownerClone = (await memberGoalEnrollment(slug, owner.id))!
+    await db.insert(schema.videoProgress).values(
+      source.videos.slice(0, 2).map((v) => ({
+        userPlaylistId: ownerClone,
+        videoId: v.id,
+        isCompleted: true,
+      })),
+    )
+
+    const page = await getGroupPage(slug, owner.id)
+    expect(page?.goal?.avgCompletionPct).toBe(25)
+    expect(page?.members.find((m) => m.userId === owner.id)?.goalCompletedCount).toBe(2)
+  })
+
+  it("only the owner can set the goal, and once", async () => {
+    const { owner, slug } = await newGroup()
+    const member = await seedUser()
+    await joinGroup(member.id, slug)
+    const source = await seedEnrollment({ userId: owner.id, videoCount: 2 })
+
+    expect(await setGroupGoal(member.id, slug, source.playlist.id)).toEqual({
+      error: "Only the owner can set the group goal.",
+    })
+    expect(await setGroupGoal(owner.id, slug, source.playlist.id)).toMatchObject({ ok: true })
+    expect(await setGroupGoal(owner.id, slug, source.playlist.id)).toEqual({
+      error: "This group already has a goal.",
+    })
   })
 })

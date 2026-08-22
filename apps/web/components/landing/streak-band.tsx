@@ -7,7 +7,7 @@ const FROZEN = 8 // the one day a weekly freeze covered
 
 export function StreakBand() {
   return (
-    <section className="mx-auto max-w-5xl px-4 pb-24">
+    <section className="mx-auto max-w-5xl px-4 pb-20 sm:pb-28">
       <div className="border-border bg-card/60 relative overflow-hidden rounded-3xl border p-8 sm:p-12">
         {/* warm ember wash — the single non-lavender accent on the page */}
         <div

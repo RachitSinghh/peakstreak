@@ -9,6 +9,7 @@ import {
   joinGroup,
   leaveGroup,
   removeMember,
+  setGroupGoal,
   type GroupActionResult,
 } from "@/lib/groups"
 
@@ -49,6 +50,17 @@ export async function removeMemberAction(
 ): Promise<GroupActionState> {
   const me = await requireUserId()
   const result = await removeMember(me, slug, targetUserId)
+  revalidatePath(`/g/${slug}`)
+  return toState(result)
+}
+
+export async function setGroupGoalAction(
+  slug: string,
+  playlistId: string,
+  threshold: number,
+): Promise<GroupActionState> {
+  const me = await requireUserId()
+  const result = await setGroupGoal(me, slug, playlistId, threshold)
   revalidatePath(`/g/${slug}`)
   return toState(result)
 }
