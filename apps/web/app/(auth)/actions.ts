@@ -163,6 +163,10 @@ export async function googleSignInAction(formData: FormData) {
   await signIn("google", { redirectTo: safeCallbackUrl(formData.get("callbackUrl")) })
 }
 
+export async function githubSignInAction(formData: FormData) {
+  await signIn("github", { redirectTo: safeCallbackUrl(formData.get("callbackUrl")) })
+}
+
 export async function signOutAction() {
   await signOut({ redirectTo: "/" })
 }

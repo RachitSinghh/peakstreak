@@ -4,12 +4,13 @@ import { eq } from "drizzle-orm"
 import { notFound } from "next/navigation"
 import NextAuth, { type NextAuthResult } from "next-auth"
 import Credentials from "next-auth/providers/credentials"
+import GitHub from "next-auth/providers/github"
 import Google from "next-auth/providers/google"
 
 import { track } from "@/lib/analytics"
 import { clearPresence } from "@/lib/presence"
 import { db, schema } from "@/lib/db"
-import { env, googleOAuthEnabled } from "@/lib/env"
+import { env, githubOAuthEnabled, googleOAuthEnabled } from "@/lib/env"
 import { ensureUserDefaults } from "@/lib/user"
 
 const nextAuth = NextAuth({
@@ -32,6 +33,17 @@ const nextAuth = NextAuth({
             // Links a Google sign-in to an existing email/password account
             // with the same address. Safe here because Google verifies
             // email ownership before issuing the profile.
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
+    ...(githubOAuthEnabled()
+      ? [
+          GitHub({
+            clientId: env().GITHUB_CLIENT_ID,
+            clientSecret: env().GITHUB_CLIENT_SECRET,
+            // GitHub verifies email ownership, so linking to an existing
+            // same-email account is safe (mirrors the Google provider).
             allowDangerousEmailAccountLinking: true,
           }),
         ]
@@ -80,7 +92,7 @@ const nextAuth = NextAuth({
     async createUser({ user }) {
       if (user.id) {
         await ensureUserDefaults(user.id)
-        track("signup", { userId: user.id, properties: { method: "google" } })
+        track("signup", { userId: user.id, properties: { method: "oauth" } })
       }
     },
     // FT-S1: drop presence right away on logout instead of waiting for the

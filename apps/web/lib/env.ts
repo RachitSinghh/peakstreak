@@ -21,6 +21,8 @@ const envSchema = z.object({
 
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
   // Email provider toggle. USE_RESEND=false (default, until the Resend domain
   // is verified) routes all mail through SMTP/nodemailer; flip to true once
   // Resend is fully set up. Either way, if neither is configured we log to the
@@ -71,6 +73,11 @@ export function env(): Env {
 export function googleOAuthEnabled(): boolean {
   const e = env()
   return Boolean(e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET)
+}
+
+export function githubOAuthEnabled(): boolean {
+  const e = env()
+  return Boolean(e.GITHUB_CLIENT_ID && e.GITHUB_CLIENT_SECRET)
 }
 
 export function rateLimitEnabled(): boolean {

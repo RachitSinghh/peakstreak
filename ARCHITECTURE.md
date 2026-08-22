@@ -438,6 +438,8 @@ DIRECT_DATABASE_URL=postgresql://user:pass@host/peakstreak?sslmode=require
 AUTH_SECRET=                 # `openssl rand -base64 32`
 GOOGLE_CLIENT_ID=            # Google Cloud Console → OAuth client (Web)
 GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=            # GitHub → Settings → Developer settings → OAuth Apps
+GITHUB_CLIENT_SECRET=
 
 # ── YouTube Data API v3 ─────────────────────────────────────────
 YOUTUBE_API_KEY=             # plain API key, server-side only — NOT an OAuth credential

@@ -17,7 +17,9 @@ import {
   SquarePlay,
   Trash2,
   Film,
+  ChevronRight,
 } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 import {
   DndContext,
@@ -451,6 +453,15 @@ function VideoPickerDialog({
   const [urlMode, setUrlMode] = useState(false)
   const [url, setUrl] = useState("")
   const [fetching, setFetching] = useState(false)
+  const [openPlaylists, setOpenPlaylists] = useState<Set<string>>(new Set())
+
+  function togglePlaylist(id: string) {
+    setOpenPlaylists((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -566,29 +577,60 @@ function VideoPickerDialog({
               ) : (
                 filtered
                   .filter((p) => p.videos.length > 0)
-                  .map((p) => (
-                    <div key={p.enrollmentId} className="mb-3">
-                      <p className="text-muted-foreground mb-1 px-1 text-xs font-medium tracking-wide uppercase">
-                        {p.playlistTitle}
-                      </p>
-                      <ul className="flex flex-col">
-                        {p.videos.map((v) => (
-                          <li key={v.videoId}>
-                            <button
-                              onClick={() => pickExisting(p, v)}
-                              className="hover:bg-muted flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
+                  .map((p) => {
+                    // Force-open while searching so matches aren't hidden behind a closed toggle.
+                    const isOpen = q !== "" || openPlaylists.has(p.enrollmentId)
+                    return (
+                      <div key={p.enrollmentId} className="mb-2">
+                        <button
+                          onClick={() => togglePlaylist(p.enrollmentId)}
+                          className="hover:bg-muted flex w-full items-center gap-1.5 rounded-lg px-1 py-1.5 text-left transition-colors"
+                        >
+                          <motion.span
+                            animate={{ rotate: isOpen ? 90 : 0 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="text-muted-foreground shrink-0"
+                          >
+                            <ChevronRight className="size-3.5" />
+                          </motion.span>
+                          <span className="text-muted-foreground flex-1 text-xs font-medium tracking-wide uppercase">
+                            {p.playlistTitle}
+                          </span>
+                          <span className="text-muted-foreground shrink-0 text-xs">
+                            {p.videos.length}
+                          </span>
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {isOpen && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                              className="overflow-hidden"
                             >
-                              <Film className="text-muted-foreground size-3.5 shrink-0" />
-                              <span className="min-w-0 flex-1 truncate">{v.title}</span>
-                              <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                                {Math.max(1, Math.round(v.durationSeconds / 60))}m
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))
+                              <ul className="flex flex-col pl-4">
+                                {p.videos.map((v) => (
+                                  <li key={v.videoId}>
+                                    <button
+                                      onClick={() => pickExisting(p, v)}
+                                      className="hover:bg-muted flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors"
+                                    >
+                                      <Film className="text-muted-foreground size-3.5 shrink-0" />
+                                      <span className="min-w-0 flex-1 truncate">{v.title}</span>
+                                      <span className="text-muted-foreground shrink-0 font-mono text-xs">
+                                        {Math.max(1, Math.round(v.durationSeconds / 60))}m
+                                      </span>
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )
+                  })
               )}
             </div>
 

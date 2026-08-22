@@ -16,7 +16,7 @@ export function Hero() {
   return (
     <section className="relative">
       <Ambient />
-      <div className="mx-auto flex max-w-5xl flex-col items-center px-4 pt-28 pb-16 text-center sm:pt-36 sm:pb-24">
+      <div className="mx-auto flex max-w-5xl flex-col items-center px-4 pt-28 pb-20 text-center sm:pt-36 sm:pb-28">
         <span
           className="ps-hero-anim border-border bg-card/50 text-muted-foreground mb-6 inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] tracking-wide backdrop-blur-sm"
           style={{ "--ps-delay": "0.15s" } as React.CSSProperties}
@@ -25,7 +25,9 @@ export function Hero() {
           For playlists you saved with real intent
         </span>
 
-        <h1 className="max-w-4xl text-[2rem] leading-[1.08] font-semibold tracking-tight text-balance sm:text-5xl lg:whitespace-nowrap">
+        {/* Heading is a white→grey clipped gradient (B5). The one accent word
+            re-asserts its own fill so the clip doesn't paint it transparent. */}
+        <h1 className="max-w-4xl bg-gradient-to-r from-white to-[#9b9b9b] bg-clip-text text-[2rem] leading-[1.08] font-semibold tracking-tight text-balance text-transparent sm:text-5xl lg:whitespace-nowrap">
           <span className="block overflow-hidden pb-1">
             <span
               className="ps-line-inner block"
@@ -39,7 +41,8 @@ export function Hero() {
               className="ps-line-inner block"
               style={{ "--ps-delay": "0.42s" } as React.CSSProperties}
             >
-              PeakStreak makes you <span className="text-primary">finish.</span>
+              PeakStreak makes you{" "}
+              <span className="text-primary [-webkit-text-fill-color:var(--primary)]">finish.</span>
             </span>
           </span>
         </h1>

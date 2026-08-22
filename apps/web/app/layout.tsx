@@ -8,7 +8,7 @@ import { cn } from "@workspace/ui/lib/utils"
 
 import { ThemeProvider } from "@/components/theme-provider"
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
+const fontSans = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
 const fontMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -55,7 +55,7 @@ export default function RootLayout({
     // Dark-only in v1 per DESIGN.md — the theme is a static class, no switcher.
     <html
       lang="en"
-      className={cn("dark antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn("dark antialiased", fontMono.variable, "font-sans", fontSans.variable)}
     >
       <body>
         <ThemeProvider>
