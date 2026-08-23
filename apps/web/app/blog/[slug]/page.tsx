@@ -10,8 +10,11 @@ import { getAllPosts, getPost } from "@/lib/blog"
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
-export function generateStaticParams() {
-  return getAllPosts().map((post) => ({ slug: post.slug }))
+export const revalidate = 3600
+
+export async function generateStaticParams() {
+  const posts = await getAllPosts()
+  return posts.map((post) => ({ slug: post.slug }))
 }
 
 export async function generateMetadata({
@@ -20,7 +23,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const post = getPost(slug)
+  const post = await getPost(slug)
   if (!post) return {}
 
   const { title, description } = post.frontmatter
@@ -40,7 +43,7 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const post = getPost(slug)
+  const post = await getPost(slug)
   if (!post) notFound()
 
   const { title, description, status, intent } = post.frontmatter

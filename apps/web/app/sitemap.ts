@@ -6,8 +6,9 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
 // Only the publicly-reachable, indexable pages. Everything else lives behind
 // auth (see proxy.ts) and is disallowed in robots.ts.
-export default function sitemap(): MetadataRoute.Sitemap {
-  const posts: MetadataRoute.Sitemap = getAllPosts().map((post) => ({
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const allPosts = await getAllPosts()
+  const posts: MetadataRoute.Sitemap = allPosts.map((post) => ({
     url: `${APP_URL}/blog/${post.slug}`,
     changeFrequency: "monthly",
     priority: 0.7,
