@@ -23,8 +23,10 @@ export const metadata: Metadata = {
   },
 }
 
-export default function BlogIndexPage() {
-  const posts = getAllPosts()
+export const revalidate = 3600
+
+export default async function BlogIndexPage() {
+  const posts = await getAllPosts()
 
   const jsonLd = {
     "@context": "https://schema.org",
