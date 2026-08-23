@@ -24,7 +24,7 @@ async function insertPost(overrides: Partial<typeof schema.blogPosts.$inferInser
       ...overrides,
     })
     .returning()
-  return row
+  return row!
 }
 
 describe("blog reader", () => {
