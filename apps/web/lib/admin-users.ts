@@ -1,4 +1,4 @@
-import { count, desc, eq, ilike, or, sql } from "drizzle-orm"
+import { count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm"
 
 import { db, schema } from "@/lib/db"
 import { computeStreaks } from "@/lib/streaks"
@@ -65,7 +65,7 @@ export async function getUsers({
         n: count(),
       })
       .from(schema.userPlaylists)
-      .where(sql`${schema.userPlaylists.userId} = any(${ids})`)
+      .where(inArray(schema.userPlaylists.userId, ids))
       .groupBy(schema.userPlaylists.userId, schema.userPlaylists.status),
     db
       .select({
@@ -75,7 +75,7 @@ export async function getUsers({
         isFrozen: schema.dailyActivity.isFrozen,
       })
       .from(schema.dailyActivity)
-      .where(sql`${schema.dailyActivity.userId} = any(${ids})`),
+      .where(inArray(schema.dailyActivity.userId, ids)),
   ])
 
   const activeByUser = new Map<string, number>()
