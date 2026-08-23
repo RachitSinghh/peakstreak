@@ -1,15 +1,10 @@
-import "server-only"
+import { desc, eq, sql } from "drizzle-orm"
 
-import fs from "node:fs"
-import path from "node:path"
+import { db, schema } from "@/lib/db"
 
-import matter from "gray-matter"
-
-// File-based blog. Posts are Markdown files in content/blog with YAML
-// frontmatter, read at build time (no dynamic APIs), so /blog and every post
-// stay statically prerendered like the landing page. A CMS/posting surface can
-// replace this reader later without changing the page components.
-const BLOG_DIR = path.join(process.cwd(), "content/blog")
+// DB-backed blog. Posts live in the blog_posts table, edited at /admin/blog.
+// Body is Markdown rendered by components/blog/markdown.tsx. Public reads are
+// published-only; the admin surface (lib/admin-blog.ts) sees all statuses.
 
 export type BlogFrontmatter = {
   title: string
@@ -29,43 +24,45 @@ export type BlogPost = {
   readingMinutes: number
 }
 
-function estimateReadingMinutes(text: string): number {
+export type BlogPostRow = typeof schema.blogPosts.$inferSelect
+
+export function estimateReadingMinutes(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length
   return Math.max(1, Math.round(words / 220))
 }
 
-function loadPost(fileName: string): BlogPost {
-  const raw = fs.readFileSync(path.join(BLOG_DIR, fileName), "utf8")
-  const { data, content } = matter(raw)
-  const frontmatter = data as BlogFrontmatter
-  const slug = frontmatter.slug ?? fileName.replace(/\.md$/, "")
-
-  // Strip the leading H1 — the page renders the title from frontmatter, so a
-  // duplicate top-level heading in the body would show the title twice.
-  const body = content.replace(/^\s*#\s+.*\r?\n+/, "")
-
+// Pure row → BlogPost mapping so pages and the editor preview agree on shape.
+export function rowToBlogPost(row: BlogPostRow): BlogPost {
   return {
-    slug,
-    frontmatter: { ...frontmatter, slug },
-    content: body,
-    readingMinutes: estimateReadingMinutes(body),
+    slug: row.slug,
+    frontmatter: {
+      title: row.title,
+      description: row.description,
+      slug: row.slug,
+      targetKeyword: row.targetKeyword ?? undefined,
+      secondaryKeywords: (row.secondaryKeywords as string[]) ?? [],
+      intent: row.intent ?? undefined,
+      status: row.status,
+      order: row.order ?? undefined,
+    },
+    content: row.content,
+    readingMinutes: estimateReadingMinutes(row.content),
   }
 }
 
-export function getAllPosts(): BlogPost[] {
-  if (!fs.existsSync(BLOG_DIR)) return []
-
-  return fs
-    .readdirSync(BLOG_DIR)
-    .filter((file) => file.endsWith(".md"))
-    .map(loadPost)
-    .sort(
-      (a, b) =>
-        (a.frontmatter.order ?? Number.MAX_SAFE_INTEGER) -
-        (b.frontmatter.order ?? Number.MAX_SAFE_INTEGER),
-    )
+// Published posts for the public site: by `order` (nulls last), then newest.
+export async function getAllPosts(): Promise<BlogPost[]> {
+  const rows = await db
+    .select()
+    .from(schema.blogPosts)
+    .where(eq(schema.blogPosts.status, "published"))
+    .orderBy(sql`${schema.blogPosts.order} asc nulls last`, desc(schema.blogPosts.publishedAt))
+  return rows.map(rowToBlogPost)
 }
 
-export function getPost(slug: string): BlogPost | null {
-  return getAllPosts().find((post) => post.slug === slug) ?? null
+export async function getPost(slug: string): Promise<BlogPost | null> {
+  const row = await db.query.blogPosts.findFirst({
+    where: (p, { and }) => and(eq(p.slug, slug), eq(p.status, "published")),
+  })
+  return row ? rowToBlogPost(row) : null
 }

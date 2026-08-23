@@ -15,7 +15,7 @@ export async function resetDb() {
   await db.execute(sql`
     truncate users, playlists, videos, playlist_videos, user_playlists,
       video_progress, daily_activity, notes, email_preferences, email_log,
-      events cascade
+      events, blog_posts cascade
   `)
 }
 
