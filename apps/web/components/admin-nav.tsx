@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Inbox, LineChart, ListVideo, Mail, Users } from "lucide-react"
+import { BarChart3, FileText, Inbox, LineChart, ListVideo, Mail, Users } from "lucide-react"
 
 const ITEMS = [
   { href: "/admin", label: "Analytics", icon: BarChart3 },
@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/admin/retention", label: "Retention", icon: LineChart },
   { href: "/admin/content", label: "Content", icon: ListVideo },
   { href: "/admin/email", label: "Email", icon: Mail },
+  { href: "/admin/blog", label: "Blog", icon: FileText },
   { href: "/admin/feedback", label: "Feedback", icon: Inbox },
 ]
 
