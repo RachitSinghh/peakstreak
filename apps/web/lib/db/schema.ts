@@ -519,3 +519,25 @@ export const todos = pgTable(
     index("todos_user_video_idx").on(t.userId, t.videoId),
   ],
 )
+
+// ── Blog (CMS) ──────────────────────────────────────────────────
+// Posts live here, not in files — editable from /admin/blog. Body is Markdown
+// rendered by components/blog/markdown.tsx. Public pages show published only.
+export const blogPosts = pgTable(
+  "blog_posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    targetKeyword: text("target_keyword"),
+    secondaryKeywords: jsonb("secondary_keywords").notNull().default([]),
+    intent: text("intent", { enum: ["informational", "transactional", "commercial"] }),
+    status: text("status", { enum: ["draft", "published"] }).notNull().default("draft"),
+    order: integer("order"),
+    content: text("content").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index("blog_posts_status_order_idx").on(t.status, t.order)],
+)
