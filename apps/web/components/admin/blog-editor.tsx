@@ -14,6 +14,8 @@ export function BlogEditor({ initial }: { initial: Initial }) {
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [f, setF] = useState<Initial>(initial)
+  // Raw text so commas/spaces can be typed freely; split into the array on save.
+  const [keywordsText, setKeywordsText] = useState((initial.secondaryKeywords ?? []).join(", "))
 
   function set<K extends keyof Initial>(key: K, value: Initial[K]) {
     setF((prev) => ({ ...prev, [key]: value }))
@@ -21,8 +23,12 @@ export function BlogEditor({ initial }: { initial: Initial }) {
 
   function save() {
     setError(null)
+    const secondaryKeywords = keywordsText
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
     start(async () => {
-      const res = await savePostAction({ ...f, secondaryKeywords: f.secondaryKeywords })
+      const res = await savePostAction({ ...f, secondaryKeywords })
       if (res.error) setError(res.error)
       else router.push("/admin/blog")
     })
@@ -93,16 +99,8 @@ export function BlogEditor({ initial }: { initial: Initial }) {
           <span className="text-muted-foreground text-xs">Secondary keywords (comma-separated)</span>
           <input
             className={input}
-            value={(f.secondaryKeywords ?? []).join(", ")}
-            onChange={(e) =>
-              set(
-                "secondaryKeywords",
-                e.target.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              )
-            }
+            value={keywordsText}
+            onChange={(e) => setKeywordsText(e.target.value)}
           />
         </label>
         <label className="space-y-1">
