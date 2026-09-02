@@ -53,7 +53,7 @@ function RowBody({ video, index, enrollmentId, isCurrent, done }: RowProps) {
       )}
       <span
         className={cn(
-          "min-w-0 flex-1 truncate",
+          "ps-scroll-hidden min-w-0 flex-1 overflow-x-auto whitespace-nowrap",
           isCurrent ? "text-foreground font-medium" : "text-muted-foreground",
           done && !isCurrent && "line-through opacity-70",
         )}
@@ -121,7 +121,7 @@ export function UpNextList({
 
   if (!isCustom) {
     return (
-      <ol className="max-h-[70vh] overflow-y-auto pb-2">
+      <ol className="ps-scroll-thin max-h-[70vh] overflow-y-auto pb-2">
         {order.map((video, index) => (
           <li key={video.id} className="px-4">
             <RowBody
@@ -162,7 +162,7 @@ export function UpNextList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={order.map((v) => v.id)} strategy={verticalListSortingStrategy}>
-        <ol className="max-h-[70vh] overflow-y-auto pb-2">
+        <ol className="ps-scroll-thin max-h-[70vh] overflow-y-auto pb-2">
           {order.map((video, index) => (
             <SortableRow
               key={video.id}

@@ -137,6 +137,33 @@
     }
 }
 
+/* Thin scrollbar matching the border color, for scroll surfaces that
+   shouldn't show the browser's default bar (e.g. Up next list). */
+.ps-scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.ps-scroll-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.ps-scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+.ps-scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* No visible bar, still scrollable — for horizontally-scrollable single-line
+   text (long titles) where a bar would be too noisy repeated per row. */
+.ps-scroll-hidden {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.ps-scroll-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 /* ------------------------------------------------------------------ *
  * Landing-page motion — CSS-driven so it runs on first paint without
  * waiting for a JS animation library to download and hydrate. This is
