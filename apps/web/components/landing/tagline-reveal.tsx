@@ -76,9 +76,6 @@ export function TaglineReveal() {
         className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[26rem] w-[38rem] max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]"
         style={{ background: "radial-gradient(circle, rgba(94,106,210,0.14), transparent 65%)" }}
       />
-      <p className="text-muted-foreground mb-6 text-center font-mono text-[10px] tracking-[0.18em] uppercase">
-        The promise
-      </p>
       <p
         ref={ref}
         className="mx-auto max-w-[680px] text-center text-4xl leading-[1.2] font-semibold tracking-tight text-balance sm:text-5xl"

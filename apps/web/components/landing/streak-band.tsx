@@ -20,8 +20,8 @@ export function StreakBand() {
         />
         <div className="relative flex flex-col gap-8">
           <div className="max-w-lg">
-            <span className="text-muted-foreground font-mono text-[10px] tracking-[0.18em] uppercase">
-              14-day streak · 1 freeze used
+            <span className="text-muted-foreground text-xs">
+              A 14-day streak, one freeze used
             </span>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
               One video a day keeps the flame lit.

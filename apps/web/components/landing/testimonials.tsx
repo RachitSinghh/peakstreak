@@ -10,9 +10,7 @@ export async function Testimonials() {
 
   return (
     <section className="border-border overflow-hidden border-y py-8">
-      <p className="text-muted-foreground mb-6 text-center font-mono text-[10px] tracking-[0.18em] uppercase">
-        What learners say
-      </p>
+      <p className="text-muted-foreground mb-6 text-center text-sm">What learners say</p>
       <style>{`
         @keyframes ps-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
         .ps-marquee { animation: ps-marquee 45s linear infinite; }

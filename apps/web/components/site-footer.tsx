@@ -74,9 +74,7 @@ export function SiteFooter() {
           <div className="flex gap-12 sm:gap-20">
             {LINK_COLUMNS.map((col) => (
               <nav key={col.heading} className="flex flex-col gap-3">
-                <p className="text-foreground text-xs font-medium tracking-wide uppercase">
-                  {col.heading}
-                </p>
+                <p className="text-foreground text-xs font-medium">{col.heading}</p>
                 {col.links.map((link) => (
                   <Link
                     key={link.href}
