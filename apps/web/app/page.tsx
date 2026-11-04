@@ -67,7 +67,7 @@ export default function LandingPage() {
               }}
             />
             <div className="relative">
-              <h2 className="mx-auto max-w-xl bg-gradient-to-r from-white to-[#9b9b9b] bg-clip-text text-2xl font-semibold tracking-tight text-balance text-transparent sm:text-3xl">
+              <h2 className="text-foreground mx-auto max-w-xl text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
                 Stop saving playlists. Start finishing them.
               </h2>
               <div className="mt-8 flex justify-center">
@@ -76,8 +76,8 @@ export default function LandingPage() {
                   <ArrowRight className="size-4" />
                 </Button>
               </div>
-              <p className="text-muted-foreground mt-4 font-mono text-[11px]">
-                Free forever · no card · start in under a minute
+              <p className="text-muted-foreground mt-4 text-[13px]">
+                Free forever, no card, and you start in under a minute.
               </p>
             </div>
           </div>

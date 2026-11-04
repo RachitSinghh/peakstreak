@@ -111,11 +111,9 @@ export function PlanMeter() {
             <p className="text-foreground truncate text-sm font-semibold">
               Neural Networks: Zero to Hero
             </p>
-            <p className="text-muted-foreground truncate text-xs">Andrej Karpathy · 24 videos</p>
+            <p className="text-muted-foreground truncate text-xs">Andrej Karpathy, 24 videos</p>
           </div>
-          <span className="text-muted-foreground shrink-0 font-mono text-[10px] tracking-[0.18em] uppercase">
-            Playlist → Plan
-          </span>
+          <span className="text-muted-foreground shrink-0 text-xs">Playlist to plan</span>
         </div>
 
         {/* meter */}

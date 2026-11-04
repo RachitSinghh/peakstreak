@@ -46,9 +46,7 @@ export function Features() {
                 aria-hidden
                 className="from-primary/10 pointer-events-none absolute -top-16 -right-16 h-32 w-32 rounded-full bg-gradient-to-br to-transparent opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
               />
-              <span className="text-muted-foreground font-mono text-[10px] tracking-[0.18em] uppercase">
-                {p.phase}
-              </span>
+              <span className="text-muted-foreground text-xs">{p.phase}</span>
               <p.icon className="text-primary mt-4 size-5" />
               <h3 className="mt-3 text-base font-semibold">{p.title}</h3>
               <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">{p.body}</p>

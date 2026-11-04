@@ -1,3 +1,6 @@
+/* Hallmark v2.0.0 · redesign: full (locked system — DESIGN.md) · page: landing (/) · genre: modern-minimal
+   system: PeakStreak dark Linear-style, near-black canvas, surface ladder, single lavender accent #5e6ad2, Inter + JetBrains Mono · built: the project
+   critique: removed the eyebrow + decorative dot, the tracked-caps mono labels, the middle-dot meta strings and the white→grey gradient-clipped headings; tightened the hero so headline, sentence, paste tool and plan-meter all read on the first screen; kept one lavender accent word, on-system */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -128,6 +131,9 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    }
+  html, body {
+    overflow-x: clip;
     }
   body {
     @apply bg-background text-foreground;
